@@ -21,3 +21,15 @@ for (const colorScheme of ["light", "dark"] as const) {
     });
   });
 }
+
+test("header sign-in goes straight to Google", async ({ page }) => {
+  // Stand-in for Google's sign-in page (test only): no request leaves the machine.
+  await page.route("https://accounts.google.com/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<title>Google stand-in</title>" }));
+  await page.goto("/categories");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("banner").getByRole("link", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/^https:\/\/accounts\.google\.com\//);
+  const state = new URL(page.url());
+  expect(state.searchParams.get("client_id")).toBe("e2e-test-google-client-id");
+  expect(state.searchParams.get("redirect_uri")).toMatch(/\/api\/auth\/callback\/google$/);
+});

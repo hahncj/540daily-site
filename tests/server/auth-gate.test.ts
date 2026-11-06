@@ -46,6 +46,19 @@ describe("Google sign-in membership gate (A2, partial)", () => {
     expect(viewer).toMatchObject({ email: OWNER_EMAIL, role: "owner", status: "active" });
   });
 
+  it("the viewer carries the Google profile picture for the header", async () => {
+    const picture = "https://lh3.googleusercontent.com/a/test-picture";
+    const response = await signInWithGoogle(services, { email: OWNER_EMAIL, picture });
+    const viewer = await getViewer(new Request("http://localhost:5173/", { headers: { cookie: cookieFrom(response)! } }), services);
+    expect(viewer).toMatchObject({ email: OWNER_EMAIL, image: picture });
+  });
+
+  it("the viewer image is null when Google sends no picture", async () => {
+    const response = await signInWithGoogle(services, { email: OWNER_EMAIL });
+    const viewer = await getViewer(new Request("http://localhost:5173/", { headers: { cookie: cookieFrom(response)! } }), services);
+    expect(viewer?.image).toBeNull();
+  });
+
   it("A2: the owner email matches case-insensitively", async () => {
     const response = await signInWithGoogle(services, { email: OWNER_EMAIL.toUpperCase() });
     expect(response.status).toBe(200);
