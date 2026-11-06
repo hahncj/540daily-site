@@ -34,7 +34,7 @@ export interface CreateAuthDeps {
 
 export function createAuth({ config, db, members, fetchClientMetadata, googleTestOverrides }: CreateAuthDeps) {
   return betterAuth({
-    appName: "540 News",
+    appName: "540 Daily",
     baseURL: config.baseUrl,
     basePath: AUTH_BASE_PATH,
     secret: config.authSecret,

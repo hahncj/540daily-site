@@ -1,6 +1,6 @@
 # Implementation patterns
 
-Code patterns to follow in 540 News. They worked in the earlier production app this design is based on, and are adapted here: an owner plus invitation-based roles instead of an admin list, and no in-app AI.
+Code patterns to follow in 540 Daily. They worked in the earlier production app this design is based on, and are adapted here: an owner plus invitation-based roles instead of an admin list, and no in-app AI.
 
 ## 1. Configuration
 
@@ -212,7 +212,7 @@ Public errors never reveal that a draft or unpublished item exists: return 404.
 
 ## 6. Logging and health
 
-- Minimal logging with `console.log`/`console.error`. Workers observability collects them; stream with `npx wrangler tail 540news-site --format json`.
+- Minimal logging with `console.log`/`console.error`. Workers observability collects them; stream with `npx wrangler tail 540daily-site --format json`.
 - Never log secrets, tokens, API keys, or request bodies.
 - `/health` returns `{ ok, host, checks: { database, media } }`. It runs a trivial query (for example, `select 1` or a count on a small table) and the media `ping()`, and returns 503 when a check fails.
 

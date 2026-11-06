@@ -1,4 +1,4 @@
-/* 540 News design tokens. Light and dark sets; "system" follows the device preference. */
+/* 540 Daily design tokens. Light and dark sets; "system" follows the device preference. */
 :root {
   color-scheme: light;
   --color-bg: #f7f7f5;

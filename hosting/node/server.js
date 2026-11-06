@@ -26,4 +26,4 @@ async function serveStatic(request) {
 const port = Number(process.env.PORT ?? 4173);
 http
   .createServer(createRequestListener(async (request) => (await serveStatic(request)) ?? handle(request)))
-  .listen(port, () => console.log(`540 News test host on http://localhost:${port}`));
+  .listen(port, () => console.log(`540 Daily test host on http://localhost:${port}`));

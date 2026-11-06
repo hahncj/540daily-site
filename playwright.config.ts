@@ -32,7 +32,7 @@ export default defineConfig({
       BETTER_AUTH_SECRET: "e2e-test-secret-e2e-test-secret-1234",
       GOOGLE_CLIENT_ID: "e2e-test-google-client-id",
       GOOGLE_CLIENT_SECRET: "e2e-test-google-client-secret",
-      DATABASE_PATH: ".e2e/540news.db",
+      DATABASE_PATH: ".e2e/540daily.db",
       MEDIA_DIR: ".e2e/media",
     },
   },

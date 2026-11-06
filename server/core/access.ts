@@ -66,5 +66,5 @@ export function decideSignIn(facts: SignInFacts): SignInDecision {
 export const SIGN_IN_REFUSAL_MESSAGES: Record<Extract<SignInDecision, { allow: false }>["reason"], string> = {
   email_not_verified: "Your Google email address is not verified.",
   account_disabled: "This account has been disabled.",
-  not_invited: "540 News accounts are invitation-only. Ask the owner for an invitation.",
+  not_invited: "540 Daily accounts are invitation-only. Ask the owner for an invitation.",
 };

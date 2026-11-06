@@ -1,6 +1,6 @@
 # Stack
 
-Which technologies 540 News uses and how to choose their versions. The library choices follow a pattern that worked in an earlier app. **Versions do not come from that app.** 540 News chooses its own versions when it is built.
+Which technologies 540 Daily uses and how to choose their versions. The library choices follow a pattern that worked in an earlier app. **Versions do not come from that app.** 540 Daily chooses its own versions when it is built.
 
 ## 1. Version policy
 
@@ -65,7 +65,7 @@ Leave out packages nothing imports (the earlier app listed `@react-router/node` 
 
 ## 4. Not part of the launch stack
 
-- **No Anthropic SDK and no AI API key.** 540 News makes no in-app AI calls at launch. If AI features are added later, put them behind an interface in `server/core/` with an adapter in `server/ai/`, so core code never imports a provider SDK and tests use a fake.
+- **No Anthropic SDK and no AI API key.** 540 Daily makes no in-app AI calls at launch. If AI features are added later, put them behind an interface in `server/core/` with an adapter in `server/ai/`, so core code never imports a provider SDK and tests use a fake.
 - No KV, Durable Objects, Queues, cron triggers, or external databases.
 
 ## 5. Chosen versions
@@ -119,6 +119,6 @@ Install scripts are allowed only for `esbuild`, `workerd`, `better-sqlite3`, and
 | Cloudflare Workers | Hosts everything: SSR pages, MCP, OAuth, HTTP API, attachment routes, static assets |
 | Cloudflare D1 | SQLite database (binding `DB`), including Better Auth tables and FTS5 search |
 | Cloudflare R2 | Private attachment storage (binding `MEDIA`) |
-| Cloudflare custom domain | `540news.com`; required for a stable OAuth and MCP origin |
+| Cloudflare custom domain | `540daily.com`; required for a stable OAuth and MCP origin |
 | Workers observability logs | `"observability": { "enabled": true }` |
 | Google OAuth | The only sign-in method for readers, editors, and the owner |

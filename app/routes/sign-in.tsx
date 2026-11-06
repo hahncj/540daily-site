@@ -8,7 +8,7 @@ import { getViewer } from "../session.server";
 import type { Route } from "./+types/sign-in";
 
 export function meta(_: Route.MetaArgs) {
-  return [{ title: "Sign in · 540 News" }];
+  return [{ title: "Sign in · 540 Daily" }];
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -45,7 +45,7 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
   return (
     <section aria-labelledby="page-title" className="panel">
       <h1 id="page-title">Sign in</h1>
-      <p>540 News accounts are invitation-only. Sign in with the Google account your invitation was sent to.</p>
+      <p>540 Daily accounts are invitation-only. Sign in with the Google account your invitation was sent to.</p>
       {message ? (
         <p className="notice notice--error" role="alert">
           {message}

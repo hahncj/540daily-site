@@ -1,24 +1,24 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   // Must match the Worker name used by Workers Builds. Never point this config at another site's resources.
-  "name": "540news-site",
+  "name": "540daily-site",
   "main": "./worker.ts",
   "compatibility_date": "2026-11-06",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
-  "routes": [{ "pattern": "540news.com", "custom_domain": true }],
-  "vars": { "PUBLIC_BASE_URL": "https://540news.com" },
-  // Secrets (set with `npx wrangler secret put <NAME> --name 540news-site`, owner approval required):
+  "routes": [{ "pattern": "540daily.com", "custom_domain": true }],
+  "vars": { "PUBLIC_BASE_URL": "https://540daily.com" },
+  // Secrets (set with `npx wrangler secret put <NAME> --name 540daily-site`, owner approval required):
   //   OWNER_EMAIL, BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
   // Local development reads them from hosting/cloudflare/.dev.vars.
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "540news-site-db",
+      "database_name": "540daily-site-db",
       // Placeholder until the owner provisions the database (DEVELOPMENT_AND_DEPLOYMENT.md section 6).
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "../../db/migrations"
     }
   ],
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "540news-site-media" }]
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "540daily-site-media" }]
 }

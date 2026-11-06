@@ -65,7 +65,7 @@ describe("loadConfig", () => {
   it("normalizes the base URL and owner email", () => {
     const config = loadConfig(
       {
-        PUBLIC_BASE_URL: "https://540news.example/",
+        PUBLIC_BASE_URL: "https://540daily.example/",
         OWNER_EMAIL: " Owner@Example.TEST ",
         BETTER_AUTH_SECRET: "x".repeat(32),
         GOOGLE_CLIENT_ID: "id",
@@ -74,7 +74,7 @@ describe("loadConfig", () => {
       "cloudflare",
     );
     expect(config).toMatchObject({
-      baseUrl: "https://540news.example",
+      baseUrl: "https://540daily.example",
       ownerEmail: "owner@example.test",
       clientIpHeaders: ["cf-connecting-ip"],
       rateLimits: { requests: 60, writes: 10, uploads: 5 },

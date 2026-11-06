@@ -4,11 +4,11 @@ Guidance for coding agents working in this repository.
 
 ## Current state
 
-Stage 0 (Foundation) is built: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540news/BUILD_PLAN.md](docs/540news/BUILD_PLAN.md).
+Stage 0 (Foundation) is built: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md).
 
 Stage 0 notes for later lanes:
 
-- Node 26 LTS is required (Vitest 5 rejects Node 23). Versions and reasons are in [STACK.md section 5](docs/540news/STACK.md).
+- Node 26 LTS is required (Vitest 5 rejects Node 23). Versions and reasons are in [STACK.md section 5](docs/540daily/STACK.md).
 - Planned services are `PlannedService` placeholders in `server/app.ts` that throw when called. Replace one with the real `createX()` from `server/core/` when you build it.
 - `/mcp` and `/api/v1/*` return 503 and `/attachments/*` returns 404 until lanes 2A and 2B replace those branches in `handleRequest`.
 - Tests sign in through Better Auth's real Google ID-token endpoint with `signInWithGoogle()`; only Google's signature check is replaced (`googleTestOverrides`). Use `sessionCookieFor()` when a test just needs a member.
@@ -17,24 +17,24 @@ Stage 0 notes for later lanes:
 
 ## Document authority (read before building)
 
-1. [docs/540news/BUILD_PROMPT.md](docs/540news/BUILD_PROMPT.md): entry point and build workflow. [docs/540news/BUILD_PLAN.md](docs/540news/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.
-2. [docs/540news/REQUIREMENTS.md](docs/540news/REQUIREMENTS.md): **authoritative spec**. Wins over every other doc. "Default" items in it are authorized choices; do not reopen them.
-3. Technical design, in this order: [STACK](docs/540news/STACK.md), [ARCHITECTURE](docs/540news/ARCHITECTURE.md), [MCP_AND_AUTH](docs/540news/MCP_AND_AUTH.md), [DATA_AND_STORAGE](docs/540news/DATA_AND_STORAGE.md), [IMPLEMENTATION_PATTERNS](docs/540news/IMPLEMENTATION_PATTERNS.md), [DEVELOPMENT_AND_DEPLOYMENT](docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md). Items marked **Proposed** may be refined with a recorded reason.
-4. [docs/540news/DECISIONS.md](docs/540news/DECISIONS.md): history only. Its open items are resolved by the requirements.
+1. [docs/540daily/BUILD_PROMPT.md](docs/540daily/BUILD_PROMPT.md): entry point and build workflow. [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.
+2. [docs/540daily/REQUIREMENTS.md](docs/540daily/REQUIREMENTS.md): **authoritative spec**. Wins over every other doc. "Default" items in it are authorized choices; do not reopen them.
+3. Technical design, in this order: [STACK](docs/540daily/STACK.md), [ARCHITECTURE](docs/540daily/ARCHITECTURE.md), [MCP_AND_AUTH](docs/540daily/MCP_AND_AUTH.md), [DATA_AND_STORAGE](docs/540daily/DATA_AND_STORAGE.md), [IMPLEMENTATION_PATTERNS](docs/540daily/IMPLEMENTATION_PATTERNS.md), [DEVELOPMENT_AND_DEPLOYMENT](docs/540daily/DEVELOPMENT_AND_DEPLOYMENT.md). Items marked **Proposed** may be refined with a recorded reason.
+4. [docs/540daily/DECISIONS.md](docs/540daily/DECISIONS.md): history only. Its open items are resolved by the requirements.
 
-## What 540 News is
+## What 540 Daily is
 
-A public news/research dashboard at `https://540news.com`. External AI agents publish stories and Markdown reports through MCP (`/mcp`) and an HTTP API (`/api/v1/*`). Readers browse category panels anonymously; invited readers (Google sign-in) get personal dashboards and bookmarks; editors author, edit, unpublish, and restore; one owner manages access and agent credentials.
+A public news/research dashboard at `https://540daily.com`. External AI agents publish stories and Markdown reports through MCP (`/mcp`) and an HTTP API (`/api/v1/*`). Readers browse category panels anonymously; invited readers (Google sign-in) get personal dashboards and bookmarks; editors author, edit, unpublish, and restore; one owner manages access and agent credentials.
 
 ## Stack
 
-TypeScript (ESM), React Router framework mode (SSR) on one Cloudflare Worker, Better Auth (Google only, plus `mcp`/`cimd` plugins), the MCP TypeScript SDK (stateless), Drizzle ORM on D1 (SQLite) with FTS5 search, R2 for attachments. Tests: Vitest with in-memory better-sqlite3; Playwright against a Node build. Versions are chosen for this project, not copied from elsewhere: follow the version policy in [docs/540news/STACK.md](docs/540news/STACK.md), pin exactly, and record the chosen versions there.
+TypeScript (ESM), React Router framework mode (SSR) on one Cloudflare Worker, Better Auth (Google only, plus `mcp`/`cimd` plugins), the MCP TypeScript SDK (stateless), Drizzle ORM on D1 (SQLite) with FTS5 search, R2 for attachments. Tests: Vitest with in-memory better-sqlite3; Playwright against a Node build. Versions are chosen for this project, not copied from elsewhere: follow the version policy in [docs/540daily/STACK.md](docs/540daily/STACK.md), pin exactly, and record the chosen versions there.
 
 **No Anthropic SDK or AI API key at launch.** Do not add in-app AI calls.
 
 ## Commands
 
-From [docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md](docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md):
+From [docs/540daily/DEVELOPMENT_AND_DEPLOYMENT.md](docs/540daily/DEVELOPMENT_AND_DEPLOYMENT.md):
 
 ```bash
 npm install
@@ -57,7 +57,7 @@ Never run `db:migrate:remote`, `deploy`, `wrangler secret`, or any provisioning/
 
 One Worker serves everything on one origin. `server/app.ts` `handleRequest` dispatches in order: `/health` → Better Auth (`/api/auth/*`, `/.well-known/*`) → `/mcp` → `/api/v1/*` → `/attachments/*` → React Router.
 
-Layers (see [docs/540news/ARCHITECTURE.md](docs/540news/ARCHITECTURE.md)):
+Layers (see [docs/540daily/ARCHITECTURE.md](docs/540daily/ARCHITECTURE.md)):
 
 - `server/core/`: pure business rules and repository interfaces. It may import only zod and other core files. An ESLint rule enforces this.
 - `server/adapters/`: Drizzle repositories, `atomic()` helper (D1 batch or SQLite transaction), media store.
@@ -84,7 +84,7 @@ From the requirements; easy to get wrong:
 - Unpublished content and drafts are hidden from every public surface, including search, related items, bookmarks, and attachment URLs. Enforce on the server.
 - Markdown is untrusted: no raw HTML, scripts, or iframes. Inline images only via `attachment:ID`. Attachments: PNG/JPEG/WebP, ≤10 MiB, signature-checked, alt text required, served from a private R2 bucket through access-checked routes.
 - Public pages are indexable (no site-wide `noindex` header); private, editor, and auth pages are not.
-- Resource names: Worker `540news-site`, D1 `540news-site-db`, R2 `540news-site-media`. Never bind to the owner's other site's resources.
+- Resource names: Worker `540daily-site`, D1 `540daily-site-db`, R2 `540daily-site-media`. Never bind to the owner's other site's resources.
 
 ## Working conventions
 

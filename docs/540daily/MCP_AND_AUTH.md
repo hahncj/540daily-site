@@ -2,7 +2,7 @@
 
 How members sign in, how agents authenticate, and how the MCP and HTTP interfaces are built. The operations, field rules, and status codes are defined in [REQUIREMENTS.md](REQUIREMENTS.md) sections 4, 6, 8, and 9; this document covers implementation.
 
-Labels: **Proven** means the pattern worked in the earlier production app this design is based on. **Proposed** means a design choice made for 540 News that the requirements leave open. A build agent may refine a Proposed item if it records why.
+Labels: **Proven** means the pattern worked in the earlier production app this design is based on. **Proposed** means a design choice made for 540 Daily that the requirements leave open. A build agent may refine a Proposed item if it records why.
 
 ## 1. Where things run
 
@@ -18,7 +18,7 @@ Nothing MCP runs in the browser. Tools reach core services through in-process ca
 
 ## 2. Member sign-in (Google, invitation-only)
 
-**Proven base, adapted for 540 News.** Better Auth with Google is the only sign-in method; email/password is disabled.
+**Proven base, adapted for 540 Daily.** Better Auth with Google is the only sign-in method; email/password is disabled.
 
 ```ts
 // server/auth/auth.ts (shape)
@@ -129,7 +129,7 @@ Members connect agents in one of two ways. Both resolve to the same `AgentPrinci
 - **Allow** calls `authClient.oauth2.consent({ accept: true })`.
 - Disconnect (proven): in one `atomic()` write, delete the client's consent rows for that member, set `revoked` on its refresh tokens, and upsert `tool_revocations (user_id, client_id, revoked_at)`. Access tokens are self-contained JWTs, so the revocation time is how older tokens get refused. Members disconnect their own clients on `/account`; the owner can disconnect any member's on `/owner`.
 
-**API keys (proven pattern).** Only editors and the owner can create keys, for their own account, on `/account`. Format: a 540 News prefix plus `_` plus base64url of 32 random bytes. Show the key once, at creation. Store only a SHA-256 base64url hash, a short display prefix, the member's user ID, a label, `last_used_at` (updated at most once an hour), and `revoked_at`. Rotation means creating a new key and revoking the old one; the member's publications are unaffected because they belong to the member, not the key. The owner can revoke any member's key on `/owner`.
+**API keys (proven pattern).** Only editors and the owner can create keys, for their own account, on `/account`. Format: a 540 Daily prefix plus `_` plus base64url of 32 random bytes. Show the key once, at creation. Store only a SHA-256 base64url hash, a short display prefix, the member's user ID, a label, `last_used_at` (updated at most once an hour), and `revoked_at`. Rotation means creating a new key and revoking the old one; the member's publications are unaffected because they belong to the member, not the key. The owner can revoke any member's key on `/owner`.
 
 **Guardrails on every agent call:**
 
@@ -181,7 +181,7 @@ This runs on **every** MCP and HTTP request, so revoking a key, disconnecting a 
 | SDK | `@modelcontextprotocol/server` (see [STACK.md](STACK.md)) |
 | Transport | Streamable HTTP via `createMcpHandler(factory, { legacy: "stateless" })`, web-standard `fetch(request, { authInfo })` |
 | Protocol versions | The current MCP protocol revision plus older clients through the SDK's stateless fallback. Check which revisions the chosen SDK supports, and have tests send an explicit `MCP-Protocol-Version` header |
-| Endpoint | `POST https://540news.com/mcp` (exact path) |
+| Endpoint | `POST https://540daily.com/mcp` (exact path) |
 | Sessions | None. New `McpServer` per request. Legacy GET/DELETE session calls get 405 |
 | Request headers | `Authorization: Bearer <token>`, `Content-Type: application/json`, `Accept: application/json, text/event-stream` |
 | Response | JSON or `text/event-stream` (one `data:` line per message); clients and tests handle both |
@@ -213,7 +213,7 @@ export async function handleMcp(request: Request, services: Services): Promise<R
 
 ```ts
 // server/mcp/server.ts (shape)
-const INSTRUCTIONS = `This is 540 News, a public news and research site.
+const INSTRUCTIONS = `This is 540 Daily, a public news and research site.
 - Publish stories and reports with create_publication. Always send a unique externalId; resending the same payload with the same externalId is safe and returns the original.
 - To change a publication, call update_publication with expectedRevision from your last read.
 - Upload images with prepare_attachment_upload first, then reference them in Markdown as ![alt text](attachment:ID).
@@ -224,7 +224,7 @@ function result(data: unknown, isError = false) {
 }
 
 export function createAppMcpServer(services: Services, principal: AgentPrincipal): McpServer {
-  const server = new McpServer({ name: "540-news", version: "0.1.0" }, { instructions: INSTRUCTIONS });
+  const server = new McpServer({ name: "540-daily", version: "0.1.0" }, { instructions: INSTRUCTIONS });
   server.registerTool("create_publication", {
     title: "Publish a story or report",
     description: "Create and immediately publish a story or report. Requires a unique externalId.",
@@ -256,14 +256,14 @@ export function createMcpRequestHandler(services: Services, principal: AgentPrin
 **Claude Code with an API key:**
 
 ```bash
-claude mcp add --transport http 540news https://540news.com/mcp --header "Authorization: Bearer <AGENT_API_KEY>"
+claude mcp add --transport http 540daily https://540daily.com/mcp --header "Authorization: Bearer <AGENT_API_KEY>"
 ```
 
 ## 7. HTTP API
 
 Same operations as MCP ([REQUIREMENTS.md](REQUIREMENTS.md) section 9), calling the same core functions.
 
-- `Authorization: Bearer <API key or OAuth JWT>`; 401 responses carry `WWW-Authenticate: Bearer realm="540news"`.
+- `Authorization: Bearer <API key or OAuth JWT>`; 401 responses carry `WWW-Authenticate: Bearer realm="540daily"`.
 - JSON bodies are capped at **256 KB (Proposed;** the earlier app used this cap). Check both `content-length` and the actual text length; return 413 when over.
 - Responses: `{ status, message, ... }` with the matching HTTP status and `Cache-Control: no-store`.
 - Error statuses follow the requirements' table. Do not reveal whether a private item exists: another member's unpublished item returns 404.
@@ -289,7 +289,7 @@ Log the operation ID, member ID, credential ID, operation name, status, and dura
 
 | Boundary | Automated (local) check | Live check |
 | --- | --- | --- |
-| MCP challenge | `POST /mcp` with `{}` → 401 and the exact `WWW-Authenticate` value | `curl -i -X POST https://540news.com/mcp` |
+| MCP challenge | `POST /mcp` with `{}` → 401 and the exact `WWW-Authenticate` value | `curl -i -X POST https://540daily.com/mcp` |
 | Discovery | GET both `.well-known` paths; assert the fields in section 6 | Same with curl |
 | OAuth flow | `connectAgent()` helper: member session cookie → register → authorize (302 to `/consent`) → consent → token (200) | Add the connector in an MCP client; approve on `/consent` |
 | Wrong audience | Token requested without `resource` → `/mcp` returns 401 | — |

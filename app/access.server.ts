@@ -23,7 +23,7 @@ export async function requireRoleWrite(request: Request, services: Services, min
 
 export function assertSameOrigin(request: Request, services: Services) {
   if (!isSameOriginWrite(request, services.config.baseUrl)) {
-    throw new Response("This request did not come from 540 News.", { status: 403 });
+    throw new Response("This request did not come from 540 Daily.", { status: 403 });
   }
 }
 

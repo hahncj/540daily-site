@@ -1,15 +1,15 @@
-# 540 News — Build Requirements
+# 540 Daily — Build Requirements
 
 Status: Ready for implementation handoff. No application has been built or deployed during discovery.
 Date: 2026-11-05
 
 ## 1. Purpose and document authority
 
-540 News is a public news and research dashboard populated by external AI agents and human editors. Readers scan category panels, drill into stories and reports, search the archive, and optionally sign in to personalize their dashboard.
+540 Daily is a public news and research dashboard populated by external AI agents and human editors. Readers scan category panels, drill into stories and reports, search the archive, and optionally sign in to personalize their dashboard.
 
-- Product: **540 News**
-- Project: **540news-site**
-- Production origin: **https://540news.com**
+- Product: **540 Daily**
+- Project: **540daily-site**
+- Production origin: **https://540daily.com**
 - Hosting: the owner's existing Cloudflare account, with a separate application, databases, and attachment storage.
 
 **Confirmed** means selected by the owner during discovery. **Default** means a recommended implementation choice made under the owner's instruction to finish with defaults. Defaults are part of the implementation baseline unless changed; they are not claims of individual owner approval or technical verification.
@@ -25,7 +25,7 @@ This document takes precedence over the technical design documents listed in sec
 - Readers choose and reorder personal category panels. Editors choose and order public homepage categories.
 - Light and dark themes.
 - Stories and longer research reports, including daily briefings published as reports.
-- Markdown authoring with image and chart attachments uploaded to 540 News.
+- Markdown authoring with image and chart attachments uploaded to 540 Daily.
 - External agents publish automatically through both MCP and HTTP API. No editorial approval queue.
 - Each publication supplies a category; new categories are created automatically. New categories do not automatically appear on the public homepage.
 - Agents act on behalf of the signed-in member who connected them, and create and update only that member's publications. Editors can create and edit publications directly, with Markdown preview.
@@ -226,7 +226,7 @@ The technical design, adapted from an earlier production app built on the same s
 Defaults:
 
 - Preserve one Cloudflare Worker/origin for React Router SSR, OAuth, MCP, HTTP API, and media routes; TypeScript, Drizzle/D1, R2, isolated core services, thin adapters, per-request Worker services, environment configuration, and additive migrations.
-- Resource names: Worker `540news-site`, D1 `540news-site-db`, R2 `540news-site-media`. These are intended names, not provisioned resources; check availability in the owner's account. Bind DB and MEDIA to new resources only.
+- Resource names: Worker `540daily-site`, D1 `540daily-site-db`, R2 `540daily-site-media`. These are intended names, not provisioned resources; check availability in the owner's account. Bind DB and MEDIA to new resources only.
 - Choose dependency versions for this project at build time: current stable releases that work together, pinned exactly and recorded in STACK.md. Do not copy versions from the earlier app. Never silently invent packages, versions, SDK methods, or successful tests.
 - Use invitation-based reader/editor/owner membership, bootstrapped from `OWNER_EMAIL`. Do not treat all signed-in users as admins.
 - Include search and media storage as required launch features. Do not set a blanket `noindex` header: published pages should be indexable; private/editor/auth pages should not. Generate a sitemap containing only published public URLs.
@@ -256,7 +256,7 @@ Use automated tests for authorization, data consistency, integration behavior, a
 | A14 | Editor creation, publication, editing, unpublish, history, restore, and homepage configuration work end to end. |
 | A15 | Migrations run on a fresh local database; type checking, lint, unit/integration tests, production build, and critical browser tests pass. No runtime research AI key is required. |
 | A16 | Removed: backup export and restore are deferred (section 3). ID kept so other IDs stay stable. |
-| A17 | Production configuration points only to dedicated 540 News resources. A deployment checklist records real domain, Google login, MCP connection, upload, and visibility checks as run or pending. |
+| A17 | Production configuration points only to dedicated 540 Daily resources. A deployment checklist records real domain, Google login, MCP connection, upload, and visibility checks as run or pending. |
 
 ## 12. Delivery and deployment inputs
 
@@ -265,7 +265,7 @@ The build agent must deliver working application code, migrations, tests, local 
 Remaining inputs are operational, not unanswered product requirements:
 
 - Cloudflare account access and actual new resource IDs.
-- Verified control/DNS configuration for `540news.com`.
+- Verified control/DNS configuration for `540daily.com`.
 - Owner's Google email supplied through configuration.
 - Dedicated Google OAuth client and redirect configuration.
 - Authentication secret, and API keys created by members after launch.

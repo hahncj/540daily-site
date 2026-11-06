@@ -11,7 +11,7 @@ import * as schema from "../../server/db/schema";
 import { FsMediaStore } from "./fs-media";
 
 export function createNodeApp(env: Record<string, string | undefined>) {
-  const sqlite = new Database(env.DATABASE_PATH ?? ".e2e/540news.db");
+  const sqlite = new Database(env.DATABASE_PATH ?? ".e2e/540daily.db");
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   const db = drizzle(sqlite, { schema });

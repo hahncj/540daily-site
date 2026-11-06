@@ -15,7 +15,7 @@ const envSchema = z.object({
 export type HostKind = "cloudflare" | "node";
 
 export interface AppConfig {
-  /** Origin with no trailing slash, for example https://540news.com. */
+  /** Origin with no trailing slash, for example https://540daily.com. */
   baseUrl: string;
   /** Lower-cased owner email; bootstraps the single owner. */
   ownerEmail: string;

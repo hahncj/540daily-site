@@ -4,7 +4,7 @@ import { servicesContext } from "../context";
 import type { Route } from "./+types/owner";
 
 export function meta(_: Route.MetaArgs) {
-  return [{ title: "Owner · 540 News" }];
+  return [{ title: "Owner · 540 Daily" }];
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {
