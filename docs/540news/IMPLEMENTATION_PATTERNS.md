@@ -155,7 +155,7 @@ export const publicationCreateSchema = z.object(publicationCreateShape)
 - One schema is used by editor forms, MCP, and HTTP. MCP gets the raw shape; core runs the full refined schema.
 - Factories take injected `now` and `newId`: `createPublications({ repo, now, newId })`.
 - Results that can fail return discriminated unions (`{ ok: true, value }` or `{ ok: false, status, message, errors? }`), not exceptions.
-- Actors are explicit: `{ kind: "member", userId, role }` or `{ kind: "agent", agentId }`. Core enforces permissions against the actor, so a protocol layer cannot bypass them.
+- Actors are explicit: `{ kind: "member", userId, role }` for the website, or `{ kind: "agent", userId, role, credentialId }` for an agent acting as a member. Agent actors get the agent guardrails (create, and update own only) even when the member is an editor. Core enforces permissions against the actor, so a protocol layer cannot bypass them.
 
 ## 4. Pages, forms, and resource routes
 
@@ -173,6 +173,7 @@ export default [
   route("sign-in", "routes/sign-in.tsx"),
   route("consent", "routes/consent.tsx"),
   route("editor/*", "routes/editor.tsx"),       // split into child routes as needed
+  route("account", "routes/account.tsx"),
   route("owner/*", "routes/owner.tsx"),
   route("sitemap.xml", "routes/sitemap.ts"),
 ] satisfies RouteConfig;
@@ -267,7 +268,7 @@ export async function sessionCookieFor(services: Services, email: string, role: 
 Patterns:
 
 - **Route tests** call `loader`/`action` directly with `{ request, params, context: createRouterContext(services) }`. A small `run()` helper catches thrown `Response`s and unwraps `data()` results (`type === "DataWithResponseInit"`, status in `init.status`).
-- **MCP tests** send JSON-RPC through `request(services, "/mcp", …)` with an agent API key, or with a token from `connectAgent()`, which runs the full OAuth flow in-process (register → authorize → owner consent with agent mapping → token, with PKCE). Parse either JSON or SSE `data:` lines.
+- **MCP tests** send JSON-RPC through `request(services, "/mcp", …)` with a member's API key, or with a token from `connectAgent(services, member)`, which runs the full OAuth flow in-process (register → authorize → consent → token, with PKCE). Parse either JSON or SSE `data:` lines.
 - **Concurrency tests** fire identical creates with `Promise.all`, over MCP and HTTP, and assert one publication (A5).
 - **Browser tests** run Playwright against the Node build: a `setup` project seeds test data through the app, then phone, tablet, and desktop projects run with `workers: 1`. Use `@axe-core/playwright` for accessibility, and test both themes (A12).
 - Name tests with acceptance IDs (A1–A17).

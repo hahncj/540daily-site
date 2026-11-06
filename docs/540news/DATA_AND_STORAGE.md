@@ -53,7 +53,7 @@ export function changesOf(result: unknown): number {
 **Agent create with retry protection** ([REQUIREMENTS.md](REQUIREMENTS.md) A5):
 
 1. Validate and normalize the payload in core. Compute a canonical hash of the create payload.
-2. Read `submission_receipts` by `(agent_id, external_id)`. If a receipt exists, return `replayed` with the original publication ID and current revision when the hash matches; otherwise return `conflict`.
+2. Read `submission_receipts` by `(user_id, external_id)`. If a receipt exists, return `replayed` with the original publication ID and current revision when the hash matches; otherwise return `conflict`.
 3. Otherwise, in one `atomic()` batch:
    - `INSERT ... ON CONFLICT DO NOTHING` into `categories` (and `tags`) by normalized name;
    - insert the publication, with `category_id` taken from a subselect on the normalized name;
@@ -62,7 +62,7 @@ export function changesOf(result: unknown): number {
 
 The receipt and the publication commit together, so a failed attempt never leaves a receipt claiming success, and two concurrent identical creates produce one publication.
 
-**Update with an expected revision** (A7): in one batch, update the publication `WHERE id = ? AND revision = expected` (setting `revision = expected + 1`), and insert the revision snapshot with `INSERT ... SELECT ... WHERE` that same condition still holds at the new revision. If `changesOf()` on the update is 0, return `conflict` with the current revision. Agent updates also include `AND created_by_agent_id = ?` and never change visibility.
+**Update with an expected revision** (A7): in one batch, update the publication `WHERE id = ? AND revision = expected` (setting `revision = expected + 1`), and insert the revision snapshot with `INSERT ... SELECT ... WHERE` that same condition still holds at the new revision. If `changesOf()` on the update is 0, return `conflict` with the current revision. Agent updates also include `AND created_by_user_id = ?` (the acting member) and never change visibility.
 
 ## 3. Schema conventions (proven)
 
@@ -71,7 +71,7 @@ The receipt and the publication commit together, so a failed attempt never leave
 - JSON columns via `text(..., { mode: "json" }).$type<T>()` (for example, revision snapshots and source lists).
 - Enums via `text(..., { enum: [...] })`. SQLite does not enforce them, so validate in core.
 - Case-insensitive uniqueness: `uniqueIndex(...).on(sql\`${t.normalizedName} collate nocase\`)`. Store the normalized name (Unicode NFC or NFKC, trimmed, whitespace collapsed) in its own column; the display label is kept separately.
-- Idempotency: `uniqueIndex` on `(agent_id, external_id)` in `submission_receipts`.
+- Idempotency: `uniqueIndex` on `(user_id, external_id)` in `submission_receipts`, so retries through any of a member's connections or keys match.
 - Revision history: a separate append-only table of JSON snapshots (`publication_revisions`: publication ID, revision number, snapshot, status, actor kind and ID, created at). Unique on `(publication_id, revision)`.
 - Bookmarks: unique on `(user_id, publication_id)`.
 - Visibility: a `status` column (`draft`, `published`, `unpublished`) on publications. There is no hard delete at launch.
@@ -128,11 +128,11 @@ Core defines the interface; an adapter implements it with Drizzle.
 // server/core/publications.ts (no drizzle imports)
 export interface PublicationsRepository {
   getPublic(id: string): Promise<Publication | null>;            // status = published only
-  getForAgent(id: string, agentId: string): Promise<Publication | null>;
+  getForCreator(id: string, userId: string): Promise<Publication | null>;   // the member's own, any status
   getForEditor(id: string): Promise<Publication | null>;
-  findReceipt(agentId: string, externalId: string): Promise<Receipt | null>;
+  findReceipt(userId: string, externalId: string): Promise<Receipt | null>;
   createWithReceipt(input: NewPublication, receipt: NewReceipt | null): Promise<"created" | "duplicate">;
-  updateIfRevision(id: string, expected: number, changes: PublicationChanges, actor: Actor, agentId?: string): Promise<boolean>;
+  updateIfRevision(id: string, expected: number, changes: PublicationChanges, actor: Actor, onlyCreatorId?: string): Promise<boolean>;
 }
 ```
 
@@ -154,7 +154,7 @@ export interface MediaStore {
 - A filesystem implementation for the Node test host (with path-traversal checks) and an in-memory fake for Vitest.
 - The bucket is **private**; there is no public bucket URL. Files are served only through `GET /attachments/:id`, which checks visibility first:
   - referenced by a current **published** version → serve with `Cache-Control: public, max-age=300` (**Proposed**: short, so unpublishing takes effect quickly; do not use `immutable`);
-  - otherwise → serve only to editors and the owning agent, with `Cache-Control: private, no-store`; everyone else gets 404.
+  - otherwise → serve only to editors and the uploading member, with `Cache-Control: private, no-store`; everyone else gets 404.
 - Upload checks: PNG, JPEG, or WebP only; at most 10 MiB; verify the magic bytes, not just the extension or the declared type; alt text required. Store the SHA-256 digest and size. Never accept SVG or HTML.
 - Keep any image resizing out of the Worker (CPU limit). Agents and editors upload images at their final size.
 

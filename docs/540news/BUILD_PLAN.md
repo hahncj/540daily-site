@@ -12,7 +12,7 @@ flowchart LR
   S1 --> A[2A Agent interfaces]
   S1 --> B[2B Public reading]
   S1 --> C[2C Editor workspace]
-  A --> O[3A Owner console]
+  A --> O[3A Account and owner console]
   B --> R[3B Reader features]
   C --> R
   O & R --> S4[Stage 4<br/>Hardening and acceptance]
@@ -84,10 +84,10 @@ All three lanes start from `main` after Stage 1 merges. They call the Stage 1 co
 **2A — Agent interfaces**
 
 - Owns: `server/mcp/`, `server/api-v1.ts`, `server/agent-auth.ts`, `server/api-keys.ts`, `server/integration.ts`, the upload endpoints in `server/media-routes.ts`, `app/routes/consent.tsx`, and their tests.
-- Agent identities, API keys, OAuth-to-agent mapping on the owner-only consent page, revocation on every call.
+- Agents acting as members: API key verification, the consent page for any member, role and revocation checks on every call, and the create/update-own guardrails.
 - The six MCP tools and matching HTTP endpoints, the upload ticket flow, rate limits, and operational logging.
 - Exit: A4 (both interfaces create and read back), A5 across MCP and HTTP, A6, A13.
-- Note: the owner UI for managing agents comes in 3A. Here, tests create agents and keys through core.
+- Note: the `/account` and `/owner` screens for keys and connections come in 3A. Here, tests create keys through core.
 
 **2B — Public reading**
 
@@ -105,11 +105,12 @@ All three lanes start from `main` after Stage 1 merges. They call the Stage 1 co
 
 Each lane can start once the lanes it depends on have merged (see the overview diagram).
 
-**3A — Owner console** (after 2A)
+**3A — Account and owner console** (after 2A)
 
-- Owns: `app/routes/owner*` and owner components.
-- Invitations with a copyable sign-in link, role changes, account disable, sole-owner protection, agent identities and credentials (create, rotate, revoke, disconnect OAuth), recent publishing failures, and the explicit cleanup of unreferenced uploads older than seven days.
-- Exit: A2 complete; A3 (editors cannot manage access or credentials); A6 through the UI.
+- Owns: `app/routes/account.tsx`, `app/routes/owner*`, and their components.
+- `/account`: a member's own MCP connections (disconnect) and, for editors and the owner, API keys (create, revoke).
+- Invitations with a copyable sign-in link, role changes, account disable, sole-owner protection, all members' MCP connections and API keys (revoke), recent publishing failures, and the explicit cleanup of unreferenced uploads older than seven days.
+- Exit: A2 complete; A3 (editors cannot manage access or other members' keys); A6 through the UI.
 
 **3B — Reader features** (after 2B and 2C)
 

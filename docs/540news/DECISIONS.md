@@ -341,3 +341,13 @@ Confirmed by the owner on 2026-11-05:
 ## D35 — Finish with recommended defaults
 
 The owner authorized recommended defaults for remaining implementation details and preparation of the build-ready Markdown handoff. Defaults are labeled in the consolidated requirements; they are not represented as individual owner selections.
+
+## D36 — Agents act as the member who connected them
+
+Confirmed by the owner on 2026-11-06. Supersedes the stable agent identity in D13 and the owner-approved agent mapping in the earlier requirements.
+
+- Google sign-in decides access. An MCP connection or API key acts as the member who created it, with that member's current role.
+- No separate agent identities and no owner approval step per agent. Any active member can approve their own MCP connection; readers' connections are read-only.
+- Guardrails kept: agent interfaces only create publications and update the member's own publications; they have no unpublish, restore, delete, layout, or access-management operations.
+- Duplicate-retry protection is scoped to the member, so retries across MCP and HTTP still return one publication.
+- Members manage their own connections and keys; the owner can revoke any member's.

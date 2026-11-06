@@ -28,7 +28,7 @@ This document takes precedence over the technical design documents listed in sec
 - Markdown authoring with image and chart attachments uploaded to 540 News.
 - External agents publish automatically through both MCP and HTTP API. No editorial approval queue.
 - Each publication supplies a category; new categories are created automatically. New categories do not automatically appear on the public homepage.
-- Agents create and update only their own publications. Editors can create and edit publications directly, with Markdown preview.
+- Agents act on behalf of the signed-in member who connected them, and create and update only that member's publications. Editors can create and edit publications directly, with Markdown preview.
 - Editor-only version history and restoration. Editors can unpublish and restore content, without permanent deletion at launch.
 - Source links are optional.
 - Duplicate-retry protection using an agent-supplied unique publication ID, without similar-story detection.
@@ -46,19 +46,22 @@ This document takes precedence over the technical design documents listed in sec
 
 ## 4. Roles and access
 
-The distinctions below implement the confirmed public/reader/editor/owner model. Agent credential management and enforcement details are defaults.
+The distinctions below implement the confirmed public/reader/editor/owner model.
 
-| Capability | Visitor | Invited reader | Editor | Owner | Agent |
+**Confirmed by the owner (2026-11-06): agents act as the member who connected them.** Google sign-in decides everything: a member connects an MCP client by signing in with Google, or creates an API key on their account, and the agent then acts as that member with that member's role. There is no separate agent identity and no owner approval step per agent. Two guardrails apply to every agent call: agent interfaces only create publications and update the connecting member's own publications, and they offer no unpublish, restore, delete, layout, or access-management operations.
+
+| Capability | Visitor | Invited reader | Editor | Owner | Agent (acting as a member) |
 | --- | --- | --- | --- | --- | --- |
 | Read/search published content | Yes | Yes | Yes | Yes | Yes |
 | Personal dashboard/bookmarks | No | Own | Own | Own | No |
-| Create publications | No | No | Yes | Yes | Yes |
-| Update publications | No | No | Any | Any | Own only |
+| Create publications | No | No | Yes | Yes | Only if the member is an editor or owner |
+| Update publications | No | No | Any | Any | The member's own publications only |
 | View history/restore revisions | No | No | Yes | Yes | No |
 | Unpublish/restore public visibility | No | No | Yes | Yes | No |
 | Configure public category panels | No | No | Yes | Yes | No |
 | Invite users/change roles/revoke access | No | No | No | Yes | No |
-| Register agents/rotate or revoke credentials | No | No | No | Yes | No |
+| Connect MCP clients (read-only for readers) | No | Own | Own | Own | No |
+| Create/revoke API keys | No | No | Own | Own and any member's (revoke) | No |
 
 Defaults:
 
@@ -67,9 +70,10 @@ Defaults:
 - Owner can promote an accepted reader to editor, demote an editor, revoke an invitation, or disable an account. Prevent removal of the sole owner through normal role controls.
 - Re-check account status and role for protected requests. Disabling an account invalidates sessions; revoking an unaccepted invitation prevents registration. Disabling a reader does not change public access to news.
 - Protect all writes on the server. Enforce same-origin/CSRF protection for cookie-authenticated writes. Reader preferences and bookmarks require ownership checks.
-- Give each external agent a stable identity independent of credential rotation. Hash API keys, show secrets only at creation, and never log tokens.
-- Use the MCP OAuth flow in [MCP_AND_AUTH.md](MCP_AND_AUTH.md), but bind each authorized OAuth connection to an owner-approved agent identity. An OAuth user token must not inherit unrestricted editor writes through agent tools. Unmapped connections cannot publish. API keys work with both interfaces and map to that same identity.
-- Revocation is checked on every authenticated agent operation. Owner-disabled OAuth grants or API keys stop writes immediately.
+- Use the MCP OAuth flow in [MCP_AND_AUTH.md](MCP_AND_AUTH.md). Any active member may approve a connection for their own account on `/consent`. API keys belong to one member, work with both MCP and HTTP, and act as that member. Hash API keys, show secrets only at creation, and never log tokens.
+- Members see and revoke their own MCP connections and API keys on `/account`. The owner can see and revoke any member's connections and keys on `/owner`.
+- Every agent call re-checks the member's status and current role, and whether the key or connection is revoked. Disabling a member, demoting an editor to reader, revoking a key, or disconnecting a client stops writes immediately.
+- Publications created through an agent record the member and the client or key label, and display as "<member> via <client>". Editor changes do not change the original creator.
 
 ## 5. Screens and reader journeys
 
@@ -86,7 +90,8 @@ Routes below and display limits are defaults; the dashboard/drill-down behavior 
 | `/saved` | Current published versions of the reader's bookmarks |
 | `/sign-in`, `/consent` | Google sign-in and agent OAuth consent |
 | `/editor` | Publication list, create/edit, preview, history, restore, unpublish; homepage category configuration |
-| `/owner` | Invitations, roles, account status, agent connections and credentials |
+| `/account` | The signed-in member's MCP connections and API keys (keys for editors and owner only) |
+| `/owner` | Invitations, roles, account status, all members' MCP connections and API keys, recent publishing failures |
 
 Default experience:
 
@@ -107,7 +112,7 @@ Field limits and metadata choices are defaults. Enforce the same schema for edit
 
 | Field | Requirement |
 | --- | --- |
-| `externalId` | Required for agent creation; 1–128 characters, unique per stable agent identity |
+| `externalId` | Required for agent creation; 1–128 characters, unique per member (across all of that member's connections and keys) |
 | `type` | Required: `story` or `report`; a briefing is a report with optional `briefing` tag |
 | `title` | Required; 1–200 characters |
 | `summary` | Required; 1–1,000 characters; plain text |
@@ -117,7 +122,7 @@ Field limits and metadata choices are defaults. Enforce the same schema for edit
 | `sources` | Optional, up to 20 HTTP(S) links with optional labels; do not fetch them automatically |
 | `attachmentIds` | Optional, up to 20 authorized uploaded assets referenced by the Markdown |
 | `sourcePublishedAt` | Optional source date; separate from app publication time |
-| Server fields | ID, stable creator identity, status, revision number, created/published/updated timestamps, change actor |
+| Server fields | ID, creator member and client/key label, status, revision number, created/published/updated timestamps, change actor |
 
 Defaults:
 
@@ -125,7 +130,7 @@ Defaults:
 - Seed Technology, Business, Finance, Sports, and Entertainment once. Initially select them for the public layout; show an empty state until real publications arrive. Editors can change selection and order. Categories are flat at launch.
 - Store submitted text, not fetched full-text copies of linked sources. Render source links when provided; do not fabricate sources or imply independent verification.
 - Submitted Markdown is untrusted. Sanitize output, disable raw HTML/scripts/iframes, validate link protocols, and allow inline images only through valid app attachment references. Ordinary external source links remain supported.
-- Display creator attribution from trusted account/agent metadata. Editor changes do not transfer original agent ownership.
+- Display creator attribution from trusted account metadata, including the client or key label for agent-created items. Editor changes do not change the original creator.
 - Agent creations publish immediately after successful validation. Editor authoring supports private drafts, preview, and an explicit Publish action. Saving edits to an already-published item updates the public version immediately.
 - Use an expected revision number for updates, including editor saves. Reject stale updates with a conflict instead of losing changes.
 - Keep revisions indefinitely by default. Each successful content/status change appends an immutable snapshot with actor and time. Restoring a revision creates a new revision and does not erase history.
@@ -148,7 +153,7 @@ Logical entities (defaults; the agent may refine physical tables without changin
 | Entity | Essential data |
 | --- | --- |
 | Auth and membership | Kit auth tables, user role/status, invitations, owner configuration |
-| Agent identity/credentials | Stable agent ID, owner-managed label, enabled state, hashed keys, OAuth mapping |
+| Agent credentials | Member-owned API keys (hashed, label, revoked time); MCP connection revocations |
 | Category/tag | ID, display name, normalized unique name, slug |
 | Publication | Fields in section 6, creator identity, visibility, revision, timestamps |
 | Publication revision | Immutable content/status snapshot, actor, time, revision number |
@@ -157,10 +162,10 @@ Logical entities (defaults; the agent may refine physical tables without changin
 | Preferences | User category ordering/visibility, selected tags, theme |
 | Homepage configuration | Editor-managed category order/visibility |
 | Bookmark | User/publication composite uniqueness and saved time |
-| Submission receipt | Agent/external ID, canonical create-payload hash, publication ID |
+| Submission receipt | Member ID and external ID, canonical create-payload hash, publication ID |
 | Audit event | Account/role/credential and publishing actions; no secrets or full request bodies |
 
-Use database uniqueness for category normalization and `(agent_id, external_id)`. Duplicate creation must be atomic with its receipt/publication; a failed attempt must not leave a receipt claiming success. Use conditional writes and D1 batch patterns for concurrent updates.
+Use database uniqueness for category normalization and `(user_id, external_id)`. Duplicate creation must be atomic with its receipt/publication; a failed attempt must not leave a receipt claiming success. Use conditional writes and D1 batch patterns for concurrent updates.
 
 ## 8. Attachments
 
@@ -169,10 +174,10 @@ App-managed uploads are confirmed. The following are defaults:
 - Dedicated private R2 bucket, served through access-checked app routes; no public bucket URL that bypasses publication visibility.
 - Accept PNG, JPEG, and WebP, up to 10 MiB per attachment. Charts are rendered images. Reject SVG, HTML, scripts, and other file types at launch. Verify content signatures, not just extensions, and require alt text.
 - Upload before publication; return an attachment ID and document the Markdown reference syntax, such as `![description](attachment:ID)`.
-- Agents can attach only assets they own; editors can manage assets for publications they edit. Prevent cross-agent asset reuse from bypassing visibility or ownership.
+- Agents can attach only assets uploaded by the same member; editors can manage assets for publications they edit. Prevent asset reuse across members from bypassing visibility or ownership.
 - An asset is publicly readable only while referenced by a current published version. Assets used only by older revisions or unpublished content are editor-only. Access-check before serving; do not publicly cache protected media or responses in a way that survives unpublishing.
 - Retain all referenced assets indefinitely. Owner may run explicit cleanup of unreferenced uploads older than seven days; no scheduled cleanup service is required at launch.
-- For large binary transfer, provide an authenticated upload operation; MCP may return a short-lived, single-use upload ticket for the same-origin HTTP upload endpoint. Bind tickets to the agent, MIME type, and size limit. Agents must not need an external public image host.
+- For large binary transfer, provide an authenticated upload operation; MCP may return a short-lived, single-use upload ticket for the same-origin HTTP upload endpoint. Bind tickets to the member, MIME type, and size limit. Agents must not need an external public image host.
 
 ## 9. Agent integration contract
 
@@ -187,16 +192,16 @@ Both interfaces and ownership restrictions are confirmed. Names and details belo
 | Update own publication | `update_publication` | `PATCH /api/v1/publications/:id` |
 | Initiate attachment upload | `prepare_attachment_upload` | `POST /api/v1/attachment-uploads` |
 
-- MCP endpoint is `/mcp`; follow the OAuth discovery and consent patterns in [MCP_AND_AUTH.md](MCP_AND_AUTH.md), with the role/agent mapping changes in section 4.
+- MCP endpoint is `/mcp`; follow the OAuth discovery and consent patterns in [MCP_AND_AUTH.md](MCP_AND_AUTH.md), with the access rules in section 4.
 - Document binary upload completion and asset status lookup. HTTP creation accepts JSON; upload uses binary transfer separately.
 - Agent APIs require credentials even for integration reads. The public website remains anonymously readable through its own routes.
-- Agent get/list operations can expose the agent's own unpublished items for correction; never expose another agent's private items or revision history. Public reads expose only published content.
+- Agent get/list operations can expose the member's own unpublished items for correction; never expose another member's private items or revision history. Public reads expose only published content.
 - Return canonical publication IDs, revision numbers, URLs, and structured validation errors. Keep MCP structured results and HTTP data shapes consistent.
-- Retried identical creation with the same agent/external ID returns the original receipt/publication ID and current revision without writing again, even across MCP and HTTP. A different canonical create payload under that ID returns conflict. Use explicit update for changes.
+- Retried identical creation with the same member and external ID returns the original receipt/publication ID and current revision without writing again, even across MCP and HTTP. A different canonical create payload under that ID returns conflict. Use explicit update for changes.
 - Update requires `expectedRevision`. No implicit upsert and no agent unpublish, restore, delete, category-layout, or role-management operations.
 - Suggested HTTP outcomes: 201 new creation, 200 read/update/replay, 400 malformed request, 401 missing/invalid credential, 403 forbidden operation, 404 unavailable item, 409 duplicate-payload or revision conflict, 413 oversize, 422 field validation, 429 rate limit, 503 unavailable dependency. Do not leak private item existence through public errors.
-- Default authenticated limits: 60 metadata/API requests per minute per agent, including at most 10 writes and 5 upload initiations per minute. Enforce across Worker instances with shared storage; configurable server settings, `Retry-After` on 429. Do not claim these values are Cloudflare service limits.
-- Log operation ID, agent ID, status, and timing without credentials. Failed publication leaves no publicly visible partial record. Return retryable errors clearly.
+- Default authenticated limits: 60 metadata/API requests per minute per member, including at most 10 writes and 5 upload initiations per minute. Enforce across Worker instances with shared storage; configurable server settings, `Retry-After` on 429. Do not claim these values are Cloudflare service limits.
+- Log operation ID, member ID, credential ID, status, and timing without credentials. Failed publication leaves no publicly visible partial record. Return retryable errors clearly.
 
 Example creation payload (illustrative, not production content):
 
@@ -237,10 +242,10 @@ Use automated tests for authorization, data consistency, integration behavior, a
 | --- | --- |
 | A1 | Anonymous visitors read homepage, category, search, and published details; protected writes fail without authentication. |
 | A2 | Invited verified Google identities gain intended membership; uninvited identities cannot register; only owner can invite or change roles. |
-| A3 | Reader A cannot read/change reader B's preferences or bookmarks; editor cannot manage invitations or agent credentials. |
+| A3 | Reader A cannot read/change reader B's preferences or bookmarks; editor cannot manage invitations or another member's API keys or connections. |
 | A4 | Each authenticated interface creates and reads back a story/report. A new category is persisted but is absent from the public layout until selected by an editor. |
 | A5 | Repeated and concurrent identical creates, including one over MCP and one over HTTP, produce one publication. Changed payload under the same external ID returns conflict. |
-| A6 | Agent A cannot update B's content. Rotation preserves A's ownership; revoked credentials fail. Unmapped OAuth connections cannot write. |
+| A6 | An agent acting as member A cannot update member B's content. A's new key or reconnected client can still update A's items. Revoked keys and disconnected clients fail. Agents acting as readers, or as a disabled or demoted member, cannot write. |
 | A7 | Conflicting expected revisions fail without lost changes. Editor history records actor/time; restoration appends a new revision. |
 | A8 | Unpublishing removes content from every public surface and blocks attachment access as appropriate. Agent updates cannot republish it. Editor restoration returns it to public view. |
 | A9 | Personal category selection/order, explicit-interest filters, theme, and bookmarks persist across sessions/devices without changing public layout. |
@@ -263,7 +268,7 @@ Remaining inputs are operational, not unanswered product requirements:
 - Verified control/DNS configuration for `540news.com`.
 - Owner's Google email supplied through configuration.
 - Dedicated Google OAuth client and redirect configuration.
-- Authentication secret and generated agent credentials.
+- Authentication secret, and API keys created by members after launch.
 - Cloudflare plan/cost choice and production deployment authorization.
 
 Proceed with local implementation using placeholders and test identities. Do not guess credentials or claim ownership, provisioning, deployment, or live verification. Request missing operational inputs only when needed. This document is a handoff specification, not an instruction to deploy during requirements gathering.

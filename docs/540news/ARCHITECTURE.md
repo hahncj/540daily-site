@@ -21,7 +21,7 @@ flowchart LR
     API[/api/v1/*/]
     MEDIA[/attachments/*<br/>access-checked/]
     RR[React Router SSR<br/>pages, loaders, actions]
-    TA[agent-auth<br/>JWT or API key to agent identity]
+    TA[agent-auth<br/>JWT or API key to member]
     CORE[server/core<br/>business rules + repository interfaces]
     REPO[Drizzle repositories]
   end
@@ -93,9 +93,9 @@ After dispatch, each response is copied into a new `Response` so headers can be 
 | --- | --- | --- | --- |
 | Visitor | None | — | Public reads only |
 | Member (reader, editor, owner) | Better Auth session cookie from Google sign-in | `getViewer()` | `Viewer { userId, email, name, role, status }`, re-read from D1 on every request |
-| Agent over MCP or HTTP | `Authorization: Bearer` with an OAuth JWT or an agent API key | `authenticateAgent()` | `AgentPrincipal { agentId, credentialKind, credentialId }` |
+| Agent over MCP or HTTP, acting as a member | `Authorization: Bearer` with an OAuth JWT or the member's API key | `authenticateAgent()` | `AgentPrincipal { userId, role, credentialKind, credentialId, label }`, role re-read from D1 on every call |
 
-Member credentials never authorize agent tools, and agent credentials never count as a browser session. Details: [MCP_AND_AUTH.md](MCP_AND_AUTH.md).
+Agents act as the member who connected them, limited to creating publications and updating the member's own. Agent credentials never count as a browser session, and a session cookie never authorizes `/mcp` or `/api/v1`. Details: [MCP_AND_AUTH.md](MCP_AND_AUTH.md).
 
 ## 7. Background work
 
@@ -130,7 +130,7 @@ Member credentials never authorize agent tools, and agent credentials never coun
     access.server.ts            requireMember / requireEditor / requireOwner (page and write variants)
     auth-client.ts              Better Auth browser client
     routes/                     home, categories, category, publication, search, dashboard, saved,
-                                sign-in, consent, editor/*, owner/*, sitemap.xml
+                                sign-in, consent, account, editor/*, owner/*, sitemap.xml
     components/
     styles/app.css              hand-written CSS with light/dark design tokens
 
@@ -147,7 +147,7 @@ Member credentials never authorize agent tools, and agent credentials never coun
       search.ts
       preferences.ts            personal layout, interest filters, theme
       bookmarks.ts
-      agents.ts                 agent identities, credential rules
+      api-keys.ts               member API key rules
       rate-limits.ts
       audit.ts
     adapters/
@@ -162,8 +162,8 @@ Member credentials never authorize agent tools, and agent credentials never coun
     mcp/
       server.ts                 McpServer factory and tool registrations
       endpoint.ts               handleMcp(): agent auth, 401 challenge, dispatch
-    agent-auth.ts               authenticateAgent(): JWT or API key → AgentPrincipal
-    api-keys.ts                 agent API key create/verify/revoke (hashed)
+    agent-auth.ts               authenticateAgent(): JWT or API key → AgentPrincipal (the member)
+    api-keys.ts                 member API key create/verify/revoke (hashed)
     api-v1.ts                   HTTP API over the same core calls
     media-routes.ts             /attachments/* serving and upload endpoint
     integration.ts              one JSON shape for MCP and HTTP results

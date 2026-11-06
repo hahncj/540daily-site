@@ -103,45 +103,55 @@ export async function requireRoleWrite(request: Request, services: Services, min
 }
 ```
 
-Roles rank `reader < editor < owner`. Owner-only operations (invitations, roles, agents, credentials, upload cleanup) require `owner`. Reader-owned data (preferences, bookmarks) is also scoped by `viewer.userId` inside core, not just by role. The first line of every write action is a `requireRoleWrite` call.
+Roles rank `reader < editor < owner`. Owner-only operations (invitations, roles, revoking other members' keys and connections, upload cleanup) require `owner`. Reader-owned data (preferences, bookmarks) is also scoped by `viewer.userId` inside core, not just by role. The first line of every write action is a `requireRoleWrite` call.
 
 **Same-origin check (Proposed):** for cookie-authenticated POST/PUT/PATCH/DELETE, require the `Origin` header (or, if absent, `Sec-Fetch-Site: same-origin`) to match `PUBLIC_BASE_URL`. Better Auth applies its own checks to `/api/auth/*`.
 
-## 4. Agent identities and credentials
+## 4. Agent credentials: agents act as members
 
-An **agent** is a stable record (`agents` table: id, owner-managed label, enabled flag, timestamps). Publications record the agent ID as creator, so rotating or revoking a credential never changes ownership.
+**Confirmed (decision D36):** an agent acts as the member who connected it, with that member's current role. There is no separate agent identity and no owner approval step per agent.
 
-Agents authenticate in one of two ways. Both resolve to the same `AgentPrincipal`.
+```ts
+// server/agent-auth.ts (shape)
+export type AgentPrincipal = {
+  userId: string; role: Role;                      // re-read from D1 on every call
+  credentialKind: "oauth" | "api_key";
+  credentialId: string;                            // OAuth client ID or API key ID
+  label: string;                                   // client name or key label, for attribution
+};
+```
 
-**API keys (proven pattern, now mapped to agents).** Format: a 540 News prefix plus `_` plus base64url of 32 random bytes. Show the key once, at creation. Store only a SHA-256 base64url hash, a short display prefix, the agent ID, `created_by`, `last_used_at` (updated at most once an hour), and `revoked_at`. The owner creates, rotates, and revokes keys on `/owner`.
+Members connect agents in one of two ways. Both resolve to the same `AgentPrincipal`.
 
-**OAuth connections (proven flow, new agent mapping).**
+**MCP connections through OAuth (proven flow).**
 
-- The `/consent` page is **owner-only (Proposed)**. Its loader verifies the signed query with `verifyOAuthQueryParams(url.search.slice(1), (await services.auth.$context).secret)` and returns 400 if it is invalid. It redirects a signed-out user to `/sign-in?<query>` and returns 403 to non-owners. It shows the client's name and a domain taken from the CIMD URL or redirect URI, which is harder to fake than the self-supplied name.
-- On **Allow**, the owner picks an existing agent identity or creates a new one. The action stores a row in `agent_oauth_clients (client_id primary key, agent_id, approved_by, approved_at, revoked_at)` and then calls `authClient.oauth2.consent({ accept: true })`.
-- A token whose client has no active mapping is **unmapped**: write tools and write endpoints return 403. **Proposed:** unmapped connections may still call read operations, which only see published content.
-- Disconnect (proven): in one `atomic()` write, delete the client's consent rows, set `revoked` on its refresh tokens, and set `revoked_at` on the mapping. Access tokens are self-contained JWTs, so the revocation time is how older tokens get refused.
+- Any active member can approve a connection for their own account on `/consent`. The loader verifies the signed query with `verifyOAuthQueryParams(url.search.slice(1), (await services.auth.$context).secret)` and returns 400 if it is invalid. It redirects a signed-out user to `/sign-in?<query>`. It shows the client's name, a domain taken from the CIMD URL or redirect URI (harder to fake than the self-supplied name), and a plain statement of what the client can do: "This app will act as you. As an editor it can publish and update your own publications." Readers see that the connection is read-only.
+- **Allow** calls `authClient.oauth2.consent({ accept: true })`.
+- Disconnect (proven): in one `atomic()` write, delete the client's consent rows for that member, set `revoked` on its refresh tokens, and upsert `tool_revocations (user_id, client_id, revoked_at)`. Access tokens are self-contained JWTs, so the revocation time is how older tokens get refused. Members disconnect their own clients on `/account`; the owner can disconnect any member's on `/owner`.
 
-An owner signing in through OAuth does **not** give the agent the owner's editor powers. Agent tools act only as the mapped agent, with agent permissions.
+**API keys (proven pattern).** Only editors and the owner can create keys, for their own account, on `/account`. Format: a 540 News prefix plus `_` plus base64url of 32 random bytes. Show the key once, at creation. Store only a SHA-256 base64url hash, a short display prefix, the member's user ID, a label, `last_used_at` (updated at most once an hour), and `revoked_at`. Rotation means creating a new key and revoking the old one; the member's publications are unaffected because they belong to the member, not the key. The owner can revoke any member's key on `/owner`.
+
+**Guardrails on every agent call:**
+
+- Writes need the member's **current** role to be editor or owner. A reader, disabled member, or demoted editor gets 403 on writes.
+- Agents only create publications and update publications whose creator is the same member. No agent operation unpublishes, restores, deletes, changes the homepage layout, or manages access.
+- An agent update never changes visibility, so it cannot republish an item an editor unpublished.
 
 ## 5. Authenticating agent requests
 
 ```ts
 // server/agent-auth.ts (shape)
-export type AgentPrincipal = { agentId: string; credentialKind: "oauth" | "api_key"; credentialId: string; label: string };
-export type AgentAuth =
-  | { ok: true; principal: AgentPrincipal }
-  | { ok: true; principal: null; unmapped: { clientId: string } }       // valid token, no agent mapping
-  | { ok: false; reason: "missing" | "invalid" };
+export type AgentAuth = { ok: true; principal: AgentPrincipal } | { ok: false; reason: "missing" | "invalid" };
 
 export async function authenticateAgent(request: Request, services: Services): Promise<AgentAuth> {
   const token = request.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
   if (!token) return { ok: false, reason: "missing" };
 
   if (token.startsWith(API_KEY_PREFIX)) {
-    const key = await services.agents.verifyApiKey(token, services.now());   // hash lookup, not revoked
-    if (!key || !key.agentEnabled) return { ok: false, reason: "invalid" };
-    return { ok: true, principal: { agentId: key.agentId, credentialKind: "api_key", credentialId: key.id, label: key.agentLabel } };
+    const key = await services.apiKeys.verify(token, services.now());       // hash lookup, not revoked
+    const member = key && (await services.members.getActive(key.userId));  // status and current role
+    if (!key || !member) return { ok: false, reason: "invalid" };
+    return { ok: true, principal: { userId: member.id, role: member.role, credentialKind: "api_key", credentialId: key.id, label: key.label } };
   }
 
   let claims;
@@ -155,12 +165,12 @@ export async function authenticateAgent(request: Request, services: Services): P
   } catch {
     return { ok: false, reason: "invalid" };
   }
-  // Then: reject if the OAuth client is disabled, if the mapping was revoked at or after `iat`,
-  // or if the agent is disabled. Return `unmapped` when no active mapping exists.
+  // Then: reject if the OAuth client is disabled, if a tool_revocations row for (sub, azp) has
+  // revoked_at at or after `iat`, or if the member (sub) is not active. Read the current role.
 }
 ```
 
-This runs on **every** MCP and HTTP request, so revoking a key, disconnecting a client, or disabling an agent stops writes immediately. Never log tokens or keys.
+This runs on **every** MCP and HTTP request, so revoking a key, disconnecting a client, disabling a member, or demoting an editor takes effect immediately. Core then checks the role and ownership rules for the operation. Never log tokens or keys.
 
 ## 6. MCP endpoint
 
@@ -195,8 +205,8 @@ This runs on **every** MCP and HTTP request, so revoking a key, disconnecting a 
 export async function handleMcp(request: Request, services: Services): Promise<Response> {
   const auth = await authenticateAgent(request, services);
   if (!auth.ok) return unauthorized(services.config, auth.reason === "invalid");
-  return createMcpRequestHandler(services, auth).fetch(request, {
-    authInfo: { token: "", clientId: auth.principal?.credentialId ?? auth.unmapped.clientId, scopes: [], extra: { agentId: auth.principal?.agentId ?? null } },
+  return createMcpRequestHandler(services, auth.principal).fetch(request, {
+    authInfo: { token: "", clientId: auth.principal.credentialId, scopes: [], extra: { userId: auth.principal.userId, role: auth.principal.role } },
   });
 }
 ```
@@ -213,7 +223,7 @@ function result(data: unknown, isError = false) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }], structuredContent: data as Record<string, unknown>, isError };
 }
 
-export function createAppMcpServer(services: Services, auth: AgentAuthOk): McpServer {
+export function createAppMcpServer(services: Services, principal: AgentPrincipal): McpServer {
   const server = new McpServer({ name: "540-news", version: "0.1.0" }, { instructions: INSTRUCTIONS });
   server.registerTool("create_publication", {
     title: "Publish a story or report",
@@ -221,7 +231,7 @@ export function createAppMcpServer(services: Services, auth: AgentAuthOk): McpSe
     inputSchema: publicationCreateShape,          // zod raw shape shared with the HTTP API, from core
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async (args) => {
-    const outcome = await services.publications.createFromAgent(auth, args);
+    const outcome = await services.publications.createFromAgent(principal, args);
     return result(toIntegration(outcome, services.config.baseUrl), !outcome.ok);
   });
   // list_categories, search_publications, get_publication: readOnlyHint true
@@ -230,8 +240,8 @@ export function createAppMcpServer(services: Services, auth: AgentAuthOk): McpSe
   return server;
 }
 
-export function createMcpRequestHandler(services: Services, auth: AgentAuthOk) {
-  return createMcpHandler(() => createAppMcpServer(services, auth), { legacy: "stateless" });
+export function createMcpRequestHandler(services: Services, principal: AgentPrincipal) {
+  return createMcpHandler(() => createAppMcpServer(services, principal), { legacy: "stateless" });
 }
 ```
 
@@ -256,24 +266,24 @@ Same operations as MCP ([REQUIREMENTS.md](REQUIREMENTS.md) section 9), calling t
 - `Authorization: Bearer <API key or OAuth JWT>`; 401 responses carry `WWW-Authenticate: Bearer realm="540news"`.
 - JSON bodies are capped at **256 KB (Proposed;** the earlier app used this cap). Check both `content-length` and the actual text length; return 413 when over.
 - Responses: `{ status, message, ... }` with the matching HTTP status and `Cache-Control: no-store`.
-- Error statuses follow the requirements' table. Do not reveal whether a private item exists: another agent's unpublished item returns 404.
+- Error statuses follow the requirements' table. Do not reveal whether a private item exists: another member's unpublished item returns 404.
 
 **Attachment upload flow (Proposed endpoint shapes; the requirements fix the initiation call only):**
 
-1. `POST /api/v1/attachment-uploads` (or MCP `prepare_attachment_upload`) with `{ mimeType, size, altText }` → `{ attachmentId, uploadUrl, expiresAt }`. The ticket is short-lived, single-use, and bound to the agent, MIME type, and declared size.
+1. `POST /api/v1/attachment-uploads` (or MCP `prepare_attachment_upload`) with `{ mimeType, size, altText }` → `{ attachmentId, uploadUrl, expiresAt }`. The ticket is short-lived, single-use, and bound to the member, MIME type, and declared size. Uploads need the editor or owner role.
 2. `PUT <uploadUrl>` with the raw bytes. No other credential is needed because the URL carries the ticket. The server checks the size and the file signature, writes to R2, and marks the attachment `ready`.
-3. `GET /api/v1/attachments/:id` → status (`pending`, `ready`, `rejected`) for the uploading agent.
+3. `GET /api/v1/attachments/:id` → status (`pending`, `ready`, `rejected`) for the uploading member.
 4. Reference it in Markdown as `![alt text](attachment:<attachmentId>)` and list it in `attachmentIds`.
 
 ## 8. Rate limits
 
-Defaults from the requirements: per agent, 60 requests per minute, of which at most 10 writes and 5 upload initiations. Configure them through server settings.
+Defaults from the requirements: per member (across all of that member's keys and connections), 60 requests per minute, of which at most 10 writes and 5 upload initiations. Configure them through server settings.
 
-**Proposed implementation:** a D1 table `rate_limit_counters (agent_id, bucket, window_start, count)` with a unique key, incremented with an upsert and checked against the limit in the same statement. When over the limit, return 429 with `Retry-After`. D1 is shared storage, so limits hold across Worker instances.
+**Proposed implementation:** a D1 table `rate_limit_counters (user_id, bucket, window_start, count)` with a unique key, incremented with an upsert and checked against the limit in the same statement. When over the limit, return 429 with `Retry-After`. D1 is shared storage, so limits hold across Worker instances.
 
 ## 9. Operational logging
 
-Log the operation ID, agent ID, operation name, status, and duration with `console.error`/`console.log` (Workers observability collects them). Never log tokens, keys, or request bodies. Also record failed publishing attempts in a bounded D1 table (30-day retention) for the owner's "recent publishing failures" view.
+Log the operation ID, member ID, credential ID, operation name, status, and duration with `console.error`/`console.log` (Workers observability collects them). Never log tokens, keys, or request bodies. Also record failed publishing attempts in a bounded D1 table (30-day retention) for the owner's "recent publishing failures" view.
 
 ## 10. Verification
 
@@ -281,11 +291,12 @@ Log the operation ID, agent ID, operation name, status, and duration with `conso
 | --- | --- | --- |
 | MCP challenge | `POST /mcp` with `{}` → 401 and the exact `WWW-Authenticate` value | `curl -i -X POST https://540news.com/mcp` |
 | Discovery | GET both `.well-known` paths; assert the fields in section 6 | Same with curl |
-| OAuth flow | `connectAgent()` helper: owner session cookie → register → authorize (302 to `/consent`) → consent with agent mapping → token (200) | Add the connector in an MCP client; approve on `/consent` |
+| OAuth flow | `connectAgent()` helper: member session cookie → register → authorize (302 to `/consent`) → consent → token (200) | Add the connector in an MCP client; approve on `/consent` |
 | Wrong audience | Token requested without `resource` → `/mcp` returns 401 | — |
-| Unmapped client | Token from a consent without a mapping → write tools return `forbidden` | — |
+| Role limits | Reader connection → write tools return `forbidden`; demote an editor → their next agent write fails (A6) | — |
+| Ownership | Agent acting as member A cannot update member B's publication (A6) | — |
 | MCP protocol | `initialize` returns name and instructions; `tools/list` returns the six tools with correct `readOnlyHint`s | Client lists the tools |
 | Tool call → DB | `create_publication`, then read back over MCP and HTTP | Publish a test item; see it on the site |
 | Replay across interfaces | Same `externalId` and payload over MCP then HTTP → one publication (A5) | — |
-| Revocation | Revoke key or disconnect client → next call 401 (A6) | — |
-| Member gates | Route actions called directly: signed out → 401, reader → 403 on editor writes, editor → 403 on owner writes (A1–A3) | Use the UI |
+| Revocation | Revoke key, disconnect client, or disable member → next call 401 (A6) | — |
+| Member gates | Route actions called directly: signed out → 401, reader → 403 on editor writes, editor → 403 on owner writes and on other members' keys (A1–A3) | Use the UI |

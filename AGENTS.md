@@ -69,8 +69,8 @@ Rules that are easy to break:
 From the requirements; easy to get wrong:
 
 - Roles: visitor / invited reader / editor / owner / agent. Owner is bootstrapped from `OWNER_EMAIL`. Uninvited Google identities cannot create accounts. Do not treat every signed-in user as an admin.
-- Agents have a stable identity separate from their credentials (hashed API keys or OAuth grants mapped by the owner). An unmapped OAuth connection cannot publish. Agents update only their own publications.
-- Create is idempotent per `(agent_id, external_id)`, enforced by a DB unique index. Same payload replays the original; a different payload returns 409. Updates require `expectedRevision`.
+- Agents act as the member who connected them (MCP via Google sign-in, or the member's hashed API key), with that member's current role. Agents only create publications and update the member's own; they never unpublish, restore, delete, or manage layout or access. Readers' agents are read-only.
+- Create is idempotent per `(user_id, external_id)`, enforced by a DB unique index. Same payload replays the original; a different payload returns 409. Updates require `expectedRevision`.
 - Every content/status change appends an immutable revision. Restore creates a new revision.
 - Unpublished content and drafts are hidden from every public surface, including search, related items, bookmarks, and attachment URLs. Enforce on the server.
 - Markdown is untrusted: no raw HTML, scripts, or iframes. Inline images only via `attachment:ID`. Attachments: PNG/JPEG/WebP, ≤10 MiB, signature-checked, alt text required, served from a private R2 bucket through access-checked routes.

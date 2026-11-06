@@ -234,4 +234,4 @@ npx wrangler d1 execute 540news-site-db --remote -c hosting/cloudflare/wrangler.
 | **`wrangler d1 export` fails with FTS5 tables.** | No one-command database dump. | Backups are deferred; D1 Time Travel remains available. |
 | **Better Auth details** (refresh-token lifetimes, built-in rate limits) were not documented in the earlier app. | Unknown defaults. | Check the Better Auth docs for the version in use and record the values. |
 | **Google OAuth has no wildcard redirects.** | No preview deployments with sign-in. | Previews build only (section 8). |
-| **MCP SDK results** pass `authInfo.token` as `""` and `scopes` as `[]`. | Tools cannot use OAuth scopes. | Authorization comes from the agent mapping, not scopes. |
+| **MCP SDK results** pass `authInfo.token` as `""` and `scopes` as `[]`. | Tools cannot use OAuth scopes. | Authorization comes from the member's role and the agent guardrails, not scopes. |
