@@ -5,10 +5,16 @@ You are implementing **540 News**, project **540news-site**, intended for **http
 ## Read first
 
 1. Read [REQUIREMENTS.md](REQUIREMENTS.md) in full. It is the authoritative launch specification. Its labeled defaults are authorized implementation choices; do not reopen every discovery question.
-2. Read the existing starter-kit documents in the order listed by [README.md](../starter-kit/README.md).
+2. Read the technical design documents in this order:
+   1. [STACK.md](STACK.md): languages, dependencies, version pins (unverified), services.
+   2. [ARCHITECTURE.md](ARCHITECTURE.md): one Worker, layers, request routing, project structure.
+   3. [MCP_AND_AUTH.md](MCP_AND_AUTH.md): Google sign-in with invitations, roles, agent identities, MCP and HTTP API.
+   4. [DATA_AND_STORAGE.md](DATA_AND_STORAGE.md): D1, Drizzle, migrations, atomic writes, search, R2 attachments, backups.
+   5. [IMPLEMENTATION_PATTERNS.md](IMPLEMENTATION_PATTERNS.md): config, services, core, routes, errors, safety, tests, lint.
+   6. [DEVELOPMENT_AND_DEPLOYMENT.md](DEVELOPMENT_AND_DEPLOYMENT.md): local setup, commands, provisioning, CI/CD, operations, known constraints.
 3. Consult [DECISIONS.md](DECISIONS.md) only for historical context. Earlier open items there are resolved by the consolidated requirements.
 
-The 540 News requirements override conflicting source-app assumptions and the generic NEW_APP_PROMPT.md. Preserve all supplied reference documents. Check applicable repository AGENTS.md instructions before editing code.
+When a technical document conflicts with REQUIREMENTS.md, the requirements win. Items marked **Proposed** in the technical documents are design choices you may refine; record why. Check the repository's AGENTS.md before editing code.
 
 ## Build outcome
 
@@ -18,7 +24,7 @@ Use a dedicated Cloudflare Worker, D1 database, and R2 bucket in the owner's exi
 
 ## Implementation workflow
 
-1. Inspect the workspace and references. Confirm dependency availability and compatibility before relying on the kit's exact pins; report any necessary substitutions and reasons.
+1. Inspect the workspace and references. Confirm dependency availability and compatibility before relying on the version pins in STACK.md; report any necessary substitutions and reasons.
 2. Implement schema, migrations, membership and agent identities, shared core publication service, and attachment handling. Test ownership, visibility, concurrency, and retry behavior early.
 3. Complete MCP and HTTP interfaces over the same service, including credential revocation and OAuth-to-agent mapping. Document a usable attachment upload flow.
 4. Build public dashboard/detail/search, then reader personalization/bookmarks, editorial authoring and history, and owner access management.

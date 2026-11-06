@@ -4,16 +4,14 @@ Guidance for coding agents working in this repository.
 
 ## Current state
 
-No application code exists yet. The repo holds only the specification and a starter kit in [docs/](docs/): [docs/540news/](docs/540news/) for this app, [docs/starter-kit/](docs/starter-kit/) for the reference kit. The commands and folders below are the **planned** layout from the kit. Check that a file or script exists before relying on it, and update this file as the real project takes shape.
+No application code exists yet. The repo holds only the specification and technical design in [docs/540news/](docs/540news/). The commands and folders below are the **planned** layout. Check that a file or script exists before relying on it, and update this file as the real project takes shape.
 
 ## Document authority (read before building)
 
 1. [docs/540news/BUILD_PROMPT.md](docs/540news/BUILD_PROMPT.md): entry point and build workflow.
 2. [docs/540news/REQUIREMENTS.md](docs/540news/REQUIREMENTS.md): **authoritative spec**. Wins over every other doc. "Default" items in it are authorized choices; do not reopen them.
-3. Starter kit, in the order listed in [docs/starter-kit/README.md](docs/starter-kit/README.md) (STACK, ARCHITECTURE, PROJECT_STRUCTURE, MCP_AND_CLAUDE, DATABASE_AND_CLOUD, IMPLEMENTATION_PATTERNS, DEVELOPMENT, DEPLOYMENT, DECISIONS_AND_GAPS). It describes a different "source app"; use its patterns, not its business features.
+3. Technical design, in this order: [STACK](docs/540news/STACK.md), [ARCHITECTURE](docs/540news/ARCHITECTURE.md), [MCP_AND_AUTH](docs/540news/MCP_AND_AUTH.md), [DATA_AND_STORAGE](docs/540news/DATA_AND_STORAGE.md), [IMPLEMENTATION_PATTERNS](docs/540news/IMPLEMENTATION_PATTERNS.md), [DEVELOPMENT_AND_DEPLOYMENT](docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md). Items marked **Proposed** may be refined with a recorded reason.
 4. [docs/540news/DECISIONS.md](docs/540news/DECISIONS.md): history only. Its open items are resolved by the requirements.
-
-Ignore [docs/starter-kit/NEW_APP_PROMPT.md](docs/starter-kit/NEW_APP_PROMPT.md) where it conflicts with the requirements (e.g. its mandatory AI suggestion feature). Never delete or rewrite the reference docs.
 
 ## What 540 News is
 
@@ -21,13 +19,13 @@ A public news/research dashboard at `https://540news.com`. External AI agents pu
 
 ## Stack
 
-TypeScript (ESM), React Router v8 framework mode (SSR) on one Cloudflare Worker, Better Auth (Google only, plus `mcp`/`cimd` plugins), MCP TypeScript SDK v2 (stateless), Drizzle ORM on D1 (SQLite) with FTS5 search, R2 for attachments. Tests: Vitest with in-memory better-sqlite3; Playwright against a Node build. Exact version pins are in [docs/starter-kit/STACK.md](docs/starter-kit/STACK.md); verify they exist in the registry before using them and report any substitution.
+TypeScript (ESM), React Router v8 framework mode (SSR) on one Cloudflare Worker, Better Auth (Google only, plus `mcp`/`cimd` plugins), MCP TypeScript SDK v2 (stateless), Drizzle ORM on D1 (SQLite) with FTS5 search, R2 for attachments. Tests: Vitest with in-memory better-sqlite3; Playwright against a Node build. Exact version pins are in [docs/540news/STACK.md](docs/540news/STACK.md); verify they exist in the registry before using them and report any substitution.
 
 **No Anthropic SDK or AI API key at launch.** Do not add in-app AI calls.
 
 ## Planned commands
 
-From [docs/starter-kit/DEVELOPMENT.md](docs/starter-kit/DEVELOPMENT.md):
+From [docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md](docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md):
 
 ```bash
 npm install
@@ -48,9 +46,9 @@ Never run `db:migrate:remote`, `deploy`, `wrangler secret`, or any provisioning/
 
 ## Architecture rules
 
-One Worker serves everything on one origin. `server/app.ts` `handleRequest` dispatches in order: `/health` → Better Auth (`/api/auth/*`, `/.well-known/*`) → `/mcp` → `/api/v1/*` → media routes → React Router.
+One Worker serves everything on one origin. `server/app.ts` `handleRequest` dispatches in order: `/health` → Better Auth (`/api/auth/*`, `/.well-known/*`) → `/mcp` → `/api/v1/*` → `/attachments/*` → React Router.
 
-Layers (see [docs/starter-kit/ARCHITECTURE.md](docs/starter-kit/ARCHITECTURE.md), [docs/starter-kit/PROJECT_STRUCTURE.md](docs/starter-kit/PROJECT_STRUCTURE.md)):
+Layers (see [docs/540news/ARCHITECTURE.md](docs/540news/ARCHITECTURE.md)):
 
 - `server/core/`: pure business rules and repository interfaces. It may import only zod and other core files. An ESLint rule enforces this.
 - `server/adapters/`: Drizzle repositories, `atomic()` helper (D1 batch or SQLite transaction), media store.
@@ -60,15 +58,15 @@ Layers (see [docs/starter-kit/ARCHITECTURE.md](docs/starter-kit/ARCHITECTURE.md)
 
 Rules that are easy to break:
 
-- **Build `Services` (including the Better Auth instance) per request on Workers.** Caching it caused sign-in hangs in the source app. Only parsed config may be cached.
+- **Build `Services` (including the Better Auth instance) per request on Workers.** Caching it caused sign-in hangs in an earlier app built on this stack. Only parsed config may be cached.
 - `atomic()` statements cannot use each other's results (D1 batch). Read first, then do conditional batch writes.
 - Migrations only add tables, columns, and indexes. Commit `db/migrations/` including `meta/`.
 - JWTs for MCP are verified in-process with `auth.api.getJwks()`; a Worker cannot fetch its own hostname.
 - `wrangler d1 export` fails with FTS5 tables. Backups use an app-level export.
 
-## 540 News differences from the kit
+## Key product rules
 
-These come from the requirements and override the kit:
+From the requirements; easy to get wrong:
 
 - Roles: visitor / invited reader / editor / owner / agent. Owner is bootstrapped from `OWNER_EMAIL`. Uninvited Google identities cannot create accounts. Do not treat every signed-in user as an admin.
 - Agents have a stable identity separate from their credentials (hashed API keys or OAuth grants mapped by the owner). An unmapped OAuth connection cannot publish. Agents update only their own publications.
@@ -76,7 +74,7 @@ These come from the requirements and override the kit:
 - Every content/status change appends an immutable revision. Restore creates a new revision.
 - Unpublished content and drafts are hidden from every public surface, including search, related items, bookmarks, and attachment URLs. Enforce on the server.
 - Markdown is untrusted: no raw HTML, scripts, or iframes. Inline images only via `attachment:ID`. Attachments: PNG/JPEG/WebP, ≤10 MiB, signature-checked, alt text required, served from a private R2 bucket through access-checked routes.
-- Public pages are indexable (do **not** copy the kit's blanket `noindex` header); private, editor, and auth pages are not.
+- Public pages are indexable (no site-wide `noindex` header); private, editor, and auth pages are not.
 - Resource names: Worker `540news-site`, D1 `540news-site-db`, R2 `540news-site-media`. Never bind to the owner's other site's resources.
 
 ## Working conventions

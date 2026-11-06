@@ -14,7 +14,7 @@ Date: 2026-11-05
 
 **Confirmed** means selected by the owner during discovery. **Default** means a recommended implementation choice made under the owner's instruction to finish with defaults. Defaults are part of the implementation baseline unless changed; they are not claims of individual owner approval or technical verification.
 
-This document takes precedence over source-app behavior and the generic NEW_APP_PROMPT.md. Preserve the reference files. The [decision record](DECISIONS.md) preserves the conversation; this document resolves its earlier open items. Start implementation with [BUILD_PROMPT.md](BUILD_PROMPT.md).
+This document takes precedence over the technical design documents listed in section 10. The [decision record](DECISIONS.md) preserves the conversation; this document resolves its earlier open items. Start implementation with [BUILD_PROMPT.md](BUILD_PROMPT.md).
 
 ## 2. Launch scope — confirmed
 
@@ -66,7 +66,7 @@ Defaults:
 - Re-check account status and role for protected requests. Disabling an account invalidates sessions; revoking an unaccepted invitation prevents registration. Disabling a reader does not change public access to news.
 - Protect all writes on the server. Enforce same-origin/CSRF protection for cookie-authenticated writes. Reader preferences and bookmarks require ownership checks.
 - Give each external agent a stable identity independent of credential rotation. Hash API keys, show secrets only at creation, and never log tokens.
-- Retain the kit's MCP OAuth flow, but bind each authorized OAuth connection to an owner-approved agent identity. An OAuth user token must not inherit unrestricted editor writes through agent tools. Unmapped connections cannot publish. API keys work with both interfaces and map to that same identity.
+- Use the MCP OAuth flow in [MCP_AND_AUTH.md](MCP_AND_AUTH.md), but bind each authorized OAuth connection to an owner-approved agent identity. An OAuth user token must not inherit unrestricted editor writes through agent tools. Unmapped connections cannot publish. API keys work with both interfaces and map to that same identity.
 - Revocation is checked on every authenticated agent operation. Owner-disabled OAuth grants or API keys stop writes immediately.
 
 ## 5. Screens and reader journeys
@@ -185,7 +185,7 @@ Both interfaces and ownership restrictions are confirmed. Names and details belo
 | Update own publication | `update_publication` | `PATCH /api/v1/publications/:id` |
 | Initiate attachment upload | `prepare_attachment_upload` | `POST /api/v1/attachment-uploads` |
 
-- MCP endpoint is `/mcp`; follow the reference OAuth discovery and consent patterns, with the role/agent mapping changes in section 4.
+- MCP endpoint is `/mcp`; follow the OAuth discovery and consent patterns in [MCP_AND_AUTH.md](MCP_AND_AUTH.md), with the role/agent mapping changes in section 4.
 - Document binary upload completion and asset status lookup. HTTP creation accepts JSON; upload uses binary transfer separately.
 - Agent APIs require credentials even for integration reads. The public website remains anonymously readable through its own routes.
 - Agent get/list operations can expose the agent's own unpublished items for correction; never expose another agent's private items or revision history. Public reads expose only published content.
@@ -214,17 +214,17 @@ Example creation payload (illustrative, not production content):
 
 ## 10. Technical foundation and intentional differences
 
-Read the supplied references in the order described by [README.md](../starter-kit/README.md): [STACK.md](../starter-kit/STACK.md), [ARCHITECTURE.md](../starter-kit/ARCHITECTURE.md), [PROJECT_STRUCTURE.md](../starter-kit/PROJECT_STRUCTURE.md), [MCP_AND_CLAUDE.md](../starter-kit/MCP_AND_CLAUDE.md), [DATABASE_AND_CLOUD.md](../starter-kit/DATABASE_AND_CLOUD.md), [IMPLEMENTATION_PATTERNS.md](../starter-kit/IMPLEMENTATION_PATTERNS.md), [DEVELOPMENT.md](../starter-kit/DEVELOPMENT.md), [DEPLOYMENT.md](../starter-kit/DEPLOYMENT.md), and [DECISIONS_AND_GAPS.md](../starter-kit/DECISIONS_AND_GAPS.md).
+The technical design, adapted from an earlier production app built on the same stack, is in: [STACK.md](STACK.md), [ARCHITECTURE.md](ARCHITECTURE.md), [MCP_AND_AUTH.md](MCP_AND_AUTH.md), [DATA_AND_STORAGE.md](DATA_AND_STORAGE.md), [IMPLEMENTATION_PATTERNS.md](IMPLEMENTATION_PATTERNS.md), and [DEVELOPMENT_AND_DEPLOYMENT.md](DEVELOPMENT_AND_DEPLOYMENT.md).
 
 Defaults:
 
 - Preserve one Cloudflare Worker/origin for React Router SSR, OAuth, MCP, HTTP API, and media routes; TypeScript, Drizzle/D1, R2, isolated core services, thin adapters, per-request Worker services, environment configuration, and additive migrations.
 - Resource names: Worker `540news-site`, D1 `540news-site-db`, R2 `540news-site-media`. These are intended names, not provisioned resources; check availability in the owner's account. Bind DB and MEDIA to new resources only.
-- Exact dependency versions and model names in the starter kit have not been verified in this discovery. Attempt the documented pins, verify registry availability and compatibility, and document a coherent supported alternative if pins are unavailable. Never silently invent packages, versions, SDK methods, or successful tests.
-- Expand the reference's admin-only sign-in into invitation-based reader/editor/owner membership. Do not treat all signed-in users as admins.
-- Include search and media storage as required launch features. Do not copy the reference's blanket `noindex` header: published pages should be indexable; private/editor/auth pages should not. Generate a sitemap containing only published public URLs.
-- Omit the generic starter prompt's mandatory AI suggestion action and live Claude call. Preserve architecture extensibility for later AI services without adding unused paid dependencies to the launch path.
-- Build a portable app-level export for owner-run backups of app data, revisions, and attachment manifests/files; exclude credentials from portable exports. Document restore into an isolated environment and reissue credentials there. Verify actual D1 recovery/export limitations rather than relying on reference plan limits.
+- Exact dependency versions in STACK.md have not been verified for this project. Attempt the documented pins, verify registry availability and compatibility, and document a coherent supported alternative if pins are unavailable. Never silently invent packages, versions, SDK methods, or successful tests.
+- Use invitation-based reader/editor/owner membership, bootstrapped from `OWNER_EMAIL`. Do not treat all signed-in users as admins.
+- Include search and media storage as required launch features. Do not set a blanket `noindex` header: published pages should be indexable; private/editor/auth pages should not. Generate a sitemap containing only published public URLs.
+- No in-app AI calls, AI SDK, or AI API key at launch. Keep the architecture open to later AI services (behind a core interface) without adding unused paid dependencies to the launch path.
+- Build a portable app-level export for owner-run backups of app data, revisions, and attachment manifests/files; exclude credentials from portable exports. Document restore into an isolated environment and reissue credentials there. Verify actual D1 recovery/export limitations rather than relying on figures from the earlier app.
 - Add CI checks before deployment. Provide `/health` with minimal dependency health and no secrets. Keep an owner-visible recent publishing-failure view backed by bounded operational logs (30-day default retention).
 - No cost estimate or hosting plan is assumed. No application-triggered AI spending at launch. Record storage/traffic usage guidance and confirm the owner's Cloudflare plan before production deployment.
 

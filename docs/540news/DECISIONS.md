@@ -4,6 +4,8 @@ Recorded: 2026-11-05. Historical record of the discovery conversation. Some impl
 
 Use [REQUIREMENTS.md](REQUIREMENTS.md) as the current specification.
 
+"Reference application", "reference kit", and "reference architecture" below mean the earlier app whose patterns were adapted for 540 News. Those patterns now live in this folder's technical documents, starting with [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Decision log
 
 ### D1 — Public reading, restricted editing
