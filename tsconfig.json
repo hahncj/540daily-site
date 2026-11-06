@@ -1,0 +1,26 @@
+{
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".react-router/types/**/*"
+  ],
+  "exclude": ["node_modules", "build"],
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "rootDirs": [".", "./.react-router/types"],
+    "types": ["node", "vite/client", "./hosting/cloudflare/worker-configuration.d.ts"]
+  }
+}
