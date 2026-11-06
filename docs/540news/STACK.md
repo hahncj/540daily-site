@@ -57,8 +57,6 @@ Not needed: `@react-router/node` and `isbot` were listed in the earlier app but 
 | `@types/react`, `@types/react-dom` | 19.3.0 | |
 | `@types/better-sqlite3` | 9.6.0 | |
 
-Optional: `fflate` 0.8.3 if the backup export builds zip files in the browser.
-
 ## Not part of the launch stack
 
 - **No Anthropic SDK and no AI API key.** 540 News makes no in-app AI calls at launch. If AI features are added later, put them behind an interface in `server/core/` with an adapter in `server/ai/`, so core code never imports a provider SDK and tests use a fake.

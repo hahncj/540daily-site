@@ -103,7 +103,7 @@ export async function requireRoleWrite(request: Request, services: Services, min
 }
 ```
 
-Roles rank `reader < editor < owner`. Owner-only operations (invitations, roles, agents, credentials, exports) require `owner`. Reader-owned data (preferences, bookmarks) is also scoped by `viewer.userId` inside core, not just by role. The first line of every write action is a `requireRoleWrite` call.
+Roles rank `reader < editor < owner`. Owner-only operations (invitations, roles, agents, credentials, upload cleanup) require `owner`. Reader-owned data (preferences, bookmarks) is also scoped by `viewer.userId` inside core, not just by role. The first line of every write action is a `requireRoleWrite` call.
 
 **Same-origin check (Proposed):** for cookie-authenticated POST/PUT/PATCH/DELETE, require the `Origin` header (or, if absent, `Sec-Fetch-Site: same-origin`) to match `PUBLIC_BASE_URL`. Better Auth applies its own checks to `/api/auth/*`.
 
@@ -269,7 +269,7 @@ Same operations as MCP ([REQUIREMENTS.md](REQUIREMENTS.md) section 9), calling t
 
 Defaults from the requirements: per agent, 60 requests per minute, of which at most 10 writes and 5 upload initiations. Configure them through server settings.
 
-**Proposed implementation:** a D1 table `rate_limit_counters (agent_id, bucket, window_start, count)` with a unique key, incremented with an upsert and checked against the limit in the same statement. When over the limit, return 429 with `Retry-After`. D1 is shared storage, so limits hold across Worker instances. Measure the extra D1 write per request after deploy.
+**Proposed implementation:** a D1 table `rate_limit_counters (agent_id, bucket, window_start, count)` with a unique key, incremented with an upsert and checked against the limit in the same statement. When over the limit, return 429 with `Retry-After`. D1 is shared storage, so limits hold across Worker instances.
 
 ## 9. Operational logging
 

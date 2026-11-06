@@ -42,6 +42,8 @@ This document takes precedence over the technical design documents listed in sec
 
 **Defaults:** No reading-history tracking, comments, reactions, push notifications, billing, native mobile application, automatic fact checking, source scraping, or in-app AI calls. No email invitation service is required. Charts are uploaded static images, not executable embeds. No research scheduler, AI API key, or paid AI subscription is a launch dependency.
 
+**Deferred by the owner (2026-11-06):** app-level backup export and restore, and performance (CPU) testing, are not part of launch.
+
 ## 4. Roles and access
 
 The distinctions below implement the confirmed public/reader/editor/owner model. Agent credential management and enforcement details are defaults.
@@ -224,7 +226,6 @@ Defaults:
 - Use invitation-based reader/editor/owner membership, bootstrapped from `OWNER_EMAIL`. Do not treat all signed-in users as admins.
 - Include search and media storage as required launch features. Do not set a blanket `noindex` header: published pages should be indexable; private/editor/auth pages should not. Generate a sitemap containing only published public URLs.
 - No in-app AI calls, AI SDK, or AI API key at launch. Keep the architecture open to later AI services (behind a core interface) without adding unused paid dependencies to the launch path.
-- Build a portable app-level export for owner-run backups of app data, revisions, and attachment manifests/files; exclude credentials from portable exports. Document restore into an isolated environment and reissue credentials there. Verify actual D1 recovery/export limitations rather than relying on figures from the earlier app.
 - Add CI checks before deployment. Provide `/health` with minimal dependency health and no secrets. Keep an owner-visible recent publishing-failure view backed by bounded operational logs (30-day default retention).
 - No cost estimate or hosting plan is assumed. No application-triggered AI spending at launch. Record storage/traffic usage guidance and confirm the owner's Cloudflare plan before production deployment.
 
@@ -249,12 +250,12 @@ Use automated tests for authorization, data consistency, integration behavior, a
 | A13 | MCP discovery, OAuth consent/token flow, initialization, tool listing, and tool calls pass integration tests. Both interfaces share validation and return documented failures. |
 | A14 | Editor creation, publication, editing, unpublish, history, restore, and homepage configuration work end to end. |
 | A15 | Migrations run on a fresh local database; type checking, lint, unit/integration tests, production build, and critical browser tests pass. No runtime research AI key is required. |
-| A16 | Export and isolated restore preserve publications, revision history, preferences, and attachment references; checks distinguish app backup from auth recovery. |
+| A16 | Removed: backup export and restore are deferred (section 3). ID kept so other IDs stay stable. |
 | A17 | Production configuration points only to dedicated 540 News resources. A deployment checklist records real domain, Google login, MCP connection, upload, and visibility checks as run or pending. |
 
 ## 12. Delivery and deployment inputs
 
-The build agent must deliver working application code, migrations, tests, local setup instructions, safe environment examples, API/MCP documentation with examples, backup/restore instructions, and a verification report. Keep setup credentials out of committed files.
+The build agent must deliver working application code, migrations, tests, local setup instructions, safe environment examples, API/MCP documentation with examples, and a verification report. Keep setup credentials out of committed files.
 
 Remaining inputs are operational, not unanswered product requirements:
 

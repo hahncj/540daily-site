@@ -167,10 +167,3 @@ export interface MediaStore {
 | Playwright | SQLite file in `.e2e/` (deleted each run), Node build | Folder in `.e2e/` | `webServer` in `playwright.config.ts` |
 
 No Docker is needed for development.
-
-## 9. Backups and restore
-
-- `wrangler d1 export` **fails on databases with FTS5 virtual tables** (proven), so it cannot be the backup tool.
-- D1 Time Travel gives point-in-time restore for a limited window: `npx wrangler d1 time-travel info 540news-site-db`. Check the current retention for the owner's plan; do not rely on figures from the earlier app.
-- The requirements call for an **app-level export** (A16): publications, revisions, categories, tags, homepage layout, preferences, bookmarks, attachment manifests, and attachment files. Exclude credentials, sessions, and OAuth secrets. Restore it into an isolated environment (not production), then reissue agent credentials there. Rebuild the FTS index from restored rows (for example, `INSERT INTO publications_fts(publications_fts) VALUES('rebuild')` or by re-inserting rows).
-- Document both procedures in the operating guide, and state that app backup is not the same as auth recovery.

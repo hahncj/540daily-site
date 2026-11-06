@@ -15,9 +15,7 @@ flowchart LR
   A --> O[3A Owner console]
   B --> R[3B Reader features]
   C --> R
-  A --> K[3C Backup and cleanup]
-  C --> K
-  O & R & K --> S4[Stage 4<br/>Hardening and acceptance]
+  O & R --> S4[Stage 4<br/>Hardening and acceptance]
   S4 --> S5[Stage 5<br/>Production launch<br/>owner-approved]
 ```
 
@@ -26,8 +24,8 @@ flowchart LR
 | 0 Foundation | One session | A15 (partial), A2 (sign-in gate) |
 | 1 Publishing core | One session | A5, A7, A10, A11 (core level) |
 | 2 Interfaces | Three parallel lanes | A1, A4, A5, A6, A8, A10, A13, A14 |
-| 3 Members and operations | Three parallel lanes | A2, A3, A9, A16 |
-| 4 Hardening | One session, with review subagents | A11, A12, A15, all A1–A16 rerun |
+| 3 Members | Two parallel lanes | A2, A3, A9 |
+| 4 Hardening | One session, with review subagents | A11, A12, A15, all A1–A15 rerun |
 | 5 Launch | Owner-driven | A17 |
 
 Stages 0 and 1 are serial on purpose. They create the schema and the shared core that every later lane depends on. Running them in parallel would cause merge conflicts and duplicate logic.
@@ -103,14 +101,14 @@ All three lanes start from `main` after Stage 1 merges. They call the Stage 1 co
 - Publication list, create and edit with Markdown preview, drafts and publish, history and restore, unpublish and restore, homepage category selection and order (with move-up/down buttons).
 - Exit: A7 in the UI, A8 editor side, A14 end to end.
 
-### Stage 3 — Members and operations (three parallel lanes)
+### Stage 3 — Members (two parallel lanes)
 
 Each lane can start once the lanes it depends on have merged (see the overview diagram).
 
 **3A — Owner console** (after 2A)
 
 - Owns: `app/routes/owner*` and owner components.
-- Invitations with a copyable sign-in link, role changes, account disable, sole-owner protection, agent identities and credentials (create, rotate, revoke, disconnect OAuth), recent publishing failures.
+- Invitations with a copyable sign-in link, role changes, account disable, sole-owner protection, agent identities and credentials (create, rotate, revoke, disconnect OAuth), recent publishing failures, and the explicit cleanup of unreferenced uploads older than seven days.
 - Exit: A2 complete; A3 (editors cannot manage access or credentials); A6 through the UI.
 
 **3B — Reader features** (after 2B and 2C)
@@ -119,18 +117,11 @@ Each lane can start once the lanes it depends on have merged (see the overview d
 - Personal dashboard seeded from the public layout, panel choice and order, interest-tag filters, bookmarks with the unavailable placeholder, theme saved to the account.
 - Exit: A9; A3 (reader A cannot see or change reader B's data).
 
-**3C — Backup and cleanup** (after 2A and 2C)
-
-- Owns: `server/core/backup.ts`, its adapter, the owner export/restore actions, cleanup of unreferenced uploads.
-- Portable export without credentials, restore into an isolated database and media folder, FTS rebuild, and the written restore procedure.
-- Exit: A16, tested by exporting from one test database and restoring into a fresh one.
-
 ### Stage 4 — Hardening and acceptance (one session, with review subagents)
 
 - Playwright journeys for phone, tablet, and desktop in both themes; keyboard navigation and panel reordering; axe checks (A12).
-- Measure Worker CPU time on the heaviest pages and record it for the plan decision.
-- Write the deliverable docs: API and MCP contract with examples, owner/editor operating guide, backup and restore procedure, deployment checklist.
-- Rerun A1–A16 and write the completion report, separating local, faked, and live checks.
+- Write the deliverable docs: API and MCP contract with examples, owner/editor operating guide, deployment checklist.
+- Rerun A1–A15 and write the completion report, separating local, faked, and live checks.
 
 ### Stage 5 — Production launch (owner-driven)
 
@@ -162,7 +153,7 @@ and you report what ran, what was faked, and what was not run. Do not merge or p
 1. Stage 0 → `main`.
 2. Stage 1 → `main`.
 3. 2A, 2B, 2C in any order; each rebases on `main` before merging.
-4. 3A (after 2A), 3B (after 2B and 2C), 3C (after 2A and 2C).
+4. 3A (after 2A), 3B (after 2B and 2C).
 5. Stage 4 → `main`.
 6. Stage 5 runs from `main` with the owner.
 

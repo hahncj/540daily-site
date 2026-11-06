@@ -99,7 +99,7 @@ Member credentials never authorize agent tools, and agent credentials never coun
 
 ## 7. Background work
 
-**None at launch.** No cron triggers, queues, `waitUntil` jobs, or Durable Objects. Everything happens inside the request. The owner-run cleanup of old unreferenced uploads and the backup export are explicit actions.
+**None at launch.** No cron triggers, queues, `waitUntil` jobs, or Durable Objects. Everything happens inside the request. The owner-run cleanup of old unreferenced uploads is an explicit action.
 
 ## 8. Outbound requests
 
@@ -150,7 +150,6 @@ Member credentials never authorize agent tools, and agent credentials never coun
       agents.ts                 agent identities, credential rules
       rate-limits.ts
       audit.ts
-      backup.ts                 export/restore manifest rules
     adapters/
       db.ts                     Database type (D1 or better-sqlite3)
       atomic.ts                 atomic(): D1 batch or SQLite transaction

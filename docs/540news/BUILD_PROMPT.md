@@ -9,7 +9,7 @@ You are implementing **540 News**, project **540news-site**, intended for **http
    1. [STACK.md](STACK.md): languages, dependencies, version pins (unverified), services.
    2. [ARCHITECTURE.md](ARCHITECTURE.md): one Worker, layers, request routing, project structure.
    3. [MCP_AND_AUTH.md](MCP_AND_AUTH.md): Google sign-in with invitations, roles, agent identities, MCP and HTTP API.
-   4. [DATA_AND_STORAGE.md](DATA_AND_STORAGE.md): D1, Drizzle, migrations, atomic writes, search, R2 attachments, backups.
+   4. [DATA_AND_STORAGE.md](DATA_AND_STORAGE.md): D1, Drizzle, migrations, atomic writes, search, R2 attachments.
    5. [IMPLEMENTATION_PATTERNS.md](IMPLEMENTATION_PATTERNS.md): config, services, core, routes, errors, safety, tests, lint.
    6. [DEVELOPMENT_AND_DEPLOYMENT.md](DEVELOPMENT_AND_DEPLOYMENT.md): local setup, commands, provisioning, CI/CD, operations, known constraints.
 3. Consult [DECISIONS.md](DECISIONS.md) only for historical context. Earlier open items there are resolved by the consolidated requirements.
@@ -30,7 +30,7 @@ The build runs in stages and parallel lanes defined in [BUILD_PLAN.md](BUILD_PLA
 2. Implement schema, migrations, membership and agent identities, shared core publication service, and attachment handling. Test ownership, visibility, concurrency, and retry behavior early.
 3. Complete MCP and HTTP interfaces over the same service, including credential revocation and OAuth-to-agent mapping. Document a usable attachment upload flow.
 4. Build public dashboard/detail/search, then reader personalization/bookmarks, editorial authoring and history, and owner access management.
-5. Finish mobile/keyboard behavior, themes, safe Markdown, failure states, export/restore, and operational documentation.
+5. Finish mobile/keyboard behavior, themes, safe Markdown, failure states, and operational documentation.
 6. Run the requirements' acceptance checks and required repository checks. Fix failures. Report actual results and explicitly distinguish local/fake tests from live integration tests.
 
 Work through the complete launch scope, not only a scaffold or a demo. Use local fixtures clearly labeled as test data; never present invented publications as actual news. Keep integration contracts and setup instructions consistent with the code.
@@ -45,5 +45,5 @@ Use placeholders for resource IDs, owner email, OAuth credentials, and secrets w
 - Automated tests covering the acceptance criteria and critical browser journeys.
 - Local development and production setup guide, `.env`/Worker variable examples with safe placeholders, and architecture instructions for future agents.
 - MCP/HTTP contract with create, update, replay/conflict, authentication, and attachment examples.
-- Owner/editor operating instructions and backup/restore procedure.
+- Owner/editor operating instructions.
 - Short completion report: implemented scope, commands/checks run and outcomes, technical deviations, and remaining operational setup. Do not claim unrun checks passed.

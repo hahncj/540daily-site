@@ -62,7 +62,7 @@ Rules that are easy to break:
 - `atomic()` statements cannot use each other's results (D1 batch). Read first, then do conditional batch writes.
 - Migrations only add tables, columns, and indexes. Commit `db/migrations/` including `meta/`.
 - JWTs for MCP are verified in-process with `auth.api.getJwks()`; a Worker cannot fetch its own hostname.
-- `wrangler d1 export` fails with FTS5 tables. Backups use an app-level export.
+- `wrangler d1 export` fails with FTS5 tables. Backup export/restore and performance testing are deferred; do not build them.
 
 ## Key product rules
 

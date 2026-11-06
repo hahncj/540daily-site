@@ -223,16 +223,15 @@ npx wrangler d1 execute 540news-site-db --remote -c hosting/cloudflare/wrangler.
   The earlier app had two production incidents where migrations were silently skipped and signed-in pages failed. Keep this check.
 
 - Live logs: `npx wrangler tail 540news-site --format json`.
-- Backups: app-level export and D1 Time Travel. `wrangler d1 export` does not work with FTS5 tables. See [DATA_AND_STORAGE.md](DATA_AND_STORAGE.md) section 9.
 
 ## 11. Known constraints
 
 | Constraint | Impact | Handling |
 | --- | --- | --- |
-| **Workers CPU time.** The free plan allows about 10 ms of CPU per request (waiting on the network or D1 does not count). The earlier, lighter app measured 11–34 ms medians. | Markdown rendering and sanitizing, file signature checks, and search will likely exceed the free limit. | Confirm the owner's Cloudflare plan before production. Check **Workers & Pages → Metrics → CPU time** after deploy. |
+| **Workers CPU time.** The free plan allows about 10 ms of CPU per request (waiting on the network or D1 does not count). | Markdown rendering, file signature checks, and search may exceed the free limit. | Confirm the owner's Cloudflare plan before production. Performance testing is deferred. |
 | **`atomic()` statements cannot read each other's results** (D1 batch). | Shapes every multi-step write. | Read first, then conditional batch writes. See [DATA_AND_STORAGE.md](DATA_AND_STORAGE.md) section 2. |
 | **A Worker cannot fetch its own hostname.** | JWT verification cannot call the app's own JWKS URL. | Verify in-process with `auth.api.getJwks()`. |
-| **`wrangler d1 export` fails with FTS5 tables.** | No one-command backup. | App-level export plus Time Travel. |
+| **`wrangler d1 export` fails with FTS5 tables.** | No one-command database dump. | Backups are deferred; D1 Time Travel remains available. |
 | **Better Auth details** (refresh-token lifetimes, built-in rate limits) were not documented in the earlier app. | Unknown defaults. | Check the Better Auth docs for the version in use and record the values. |
 | **Google OAuth has no wildcard redirects.** | No preview deployments with sign-in. | Previews build only (section 8). |
 | **MCP SDK results** pass `authInfo.token` as `""` and `scopes` as `[]`. | Tools cannot use OAuth scopes. | Authorization comes from the agent mapping, not scopes. |
