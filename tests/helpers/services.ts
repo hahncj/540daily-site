@@ -88,7 +88,7 @@ function base64url(value: string) {
  * An unsigned Google-shaped ID token (test data). Only usable because createTestServices replaces
  * the signature check; Better Auth still decodes it and runs the full sign-in path.
  */
-export function googleIdToken(claims: { email: string; sub?: string; name?: string; emailVerified?: boolean }) {
+export function googleIdToken(claims: { email: string; sub?: string; name?: string; emailVerified?: boolean; picture?: string }) {
   const now = Math.floor(Date.now() / 1000);
   const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "test" }));
   const payload = base64url(
@@ -99,6 +99,7 @@ export function googleIdToken(claims: { email: string; sub?: string; name?: stri
       email: claims.email,
       email_verified: claims.emailVerified ?? true,
       name: claims.name ?? "Test member",
+      ...(claims.picture ? { picture: claims.picture } : {}),
       iat: now,
       exp: now + 3600,
     }),

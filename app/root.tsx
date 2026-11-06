@@ -11,6 +11,8 @@ import {
 } from "react-router";
 import { roleAtLeast } from "../server/core/access";
 import type { Route } from "./+types/root";
+import { AccountAvatar } from "./components/account-avatar";
+import { SignInButton } from "./components/sign-in-button";
 import { SignOutButton } from "./components/sign-out-button";
 import { ThemeToggle, themeBootScript, type ThemeChoice } from "./components/theme-toggle";
 import { servicesContext } from "./context";
@@ -107,13 +109,13 @@ function SiteHeader() {
           <ThemeToggle initial={data?.theme ?? "system"} />
           {viewer ? (
             <>
-              <NavLink to="/account">Account</NavLink>
+              <NavLink to="/account" className="account-link" aria-label="Account" title={viewer.email}>
+                <AccountAvatar name={viewer.name} email={viewer.email} image={viewer.image} />
+              </NavLink>
               <SignOutButton />
             </>
           ) : (
-            <Link to="/sign-in" className="button">
-              Sign in
-            </Link>
+            <SignInButton />
           )}
         </div>
       </div>
