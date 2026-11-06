@@ -8,7 +8,7 @@ No application code exists yet. The repo holds only the specification and techni
 
 ## Document authority (read before building)
 
-1. [docs/540news/BUILD_PROMPT.md](docs/540news/BUILD_PROMPT.md): entry point and build workflow.
+1. [docs/540news/BUILD_PROMPT.md](docs/540news/BUILD_PROMPT.md): entry point and build workflow. [docs/540news/BUILD_PLAN.md](docs/540news/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.
 2. [docs/540news/REQUIREMENTS.md](docs/540news/REQUIREMENTS.md): **authoritative spec**. Wins over every other doc. "Default" items in it are authorized choices; do not reopen them.
 3. Technical design, in this order: [STACK](docs/540news/STACK.md), [ARCHITECTURE](docs/540news/ARCHITECTURE.md), [MCP_AND_AUTH](docs/540news/MCP_AND_AUTH.md), [DATA_AND_STORAGE](docs/540news/DATA_AND_STORAGE.md), [IMPLEMENTATION_PATTERNS](docs/540news/IMPLEMENTATION_PATTERNS.md), [DEVELOPMENT_AND_DEPLOYMENT](docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md). Items marked **Proposed** may be refined with a recorded reason.
 4. [docs/540news/DECISIONS.md](docs/540news/DECISIONS.md): history only. Its open items are resolved by the requirements.

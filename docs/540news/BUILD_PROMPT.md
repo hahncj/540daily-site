@@ -24,6 +24,8 @@ Use a dedicated Cloudflare Worker, D1 database, and R2 bucket in the owner's exi
 
 ## Implementation workflow
 
+The build runs in stages and parallel lanes defined in [BUILD_PLAN.md](BUILD_PLAN.md). If you were given one stage or lane, build only that part and follow its exit checks. The steps below describe the overall order.
+
 1. Inspect the workspace and references. Confirm dependency availability and compatibility before relying on the version pins in STACK.md; report any necessary substitutions and reasons.
 2. Implement schema, migrations, membership and agent identities, shared core publication service, and attachment handling. Test ownership, visibility, concurrency, and retry behavior early.
 3. Complete MCP and HTTP interfaces over the same service, including credential revocation and OAuth-to-agent mapping. Document a usable attachment upload flow.
