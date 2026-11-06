@@ -15,8 +15,7 @@
     {
       "binding": "DB",
       "database_name": "540daily-site-db",
-      // Placeholder until the owner provisions the database (DEVELOPMENT_AND_DEPLOYMENT.md section 6).
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "d2c17dad-536d-4d85-9be4-f48f7fb2d6f1",
       "migrations_dir": "../../db/migrations"
     }
   ],
