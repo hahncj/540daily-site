@@ -49,7 +49,7 @@ These rules keep parallel lanes from colliding.
 
 Scope:
 
-- Verify the version pins in [STACK.md](STACK.md) against the registry; record substitutions. Choose the Markdown parser and sanitizer.
+- Choose current, compatible package versions per the version policy in [STACK.md](STACK.md); pin them and fill in its "Chosen versions" table. Choose the Markdown parser and sanitizer.
 - Scaffold: `package.json`, TypeScript, Vite, React Router, Wrangler config with placeholder IDs, `.dev.vars.example`, ESLint with the core-isolation rule, Vitest, Playwright, and the Node test host.
 - `server/config.ts`, `hosting/cloudflare/worker.ts`, `server/app.ts` with `handleRequest` dispatch and `/health`.
 - **Full schema:** auth tables plus every entity in [REQUIREMENTS.md](REQUIREMENTS.md) section 7, the FTS5 table and triggers, and the one-time category seed. Generate migrations.

@@ -6,7 +6,7 @@ How to run 540 News locally, provision its Cloudflare resources, and deploy it. 
 
 ## 1. Prerequisites
 
-- Node.js `>=22.12` and npm `>=11` (`npx npm@11 install` if the global npm is older).
+- Node.js and npm at the versions set in `package.json` `engines` (see [STACK.md](STACK.md)).
 - Local development needs no Cloudflare account. Deploying needs the owner's account.
 - A Google OAuth client for sign-in (local origin `http://localhost:5173`).
 - Playwright browsers for browser tests: `npx playwright install chromium webkit`.
@@ -131,7 +131,7 @@ Create a **new** Google OAuth client (type Web application):
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "540news-site",                       // must match the Worker name used by Workers Builds
   "main": "./worker.ts",
-  "compatibility_date": "2026-11-01",
+  "compatibility_date": "<SCAFFOLD_DATE>",      // the date the project is scaffolded (YYYY-MM-DD)
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "routes": [{ "pattern": "540news.com", "custom_domain": true }],

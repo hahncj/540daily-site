@@ -51,7 +51,7 @@ export function createAuth({ config, db, fetchClientMetadata }: {
         allowUnauthenticatedClientRegistration: true,
         clientRegistrationDefaultApplicationType: "infer",
       }),
-      cimd({ fetchClientMetadataResource: fetchClientMetadata, metadataProfile: "mcp-2026-07-28" }),
+      cimd({ fetchClientMetadataResource: fetchClientMetadata /* plus the metadata profile for the current MCP revision */ }),
     ],
   });
 }
@@ -170,7 +170,7 @@ This runs on **every** MCP and HTTP request, so revoking a key, disconnecting a 
 | --- | --- |
 | SDK | `@modelcontextprotocol/server` (see [STACK.md](STACK.md)) |
 | Transport | Streamable HTTP via `createMcpHandler(factory, { legacy: "stateless" })`, web-standard `fetch(request, { authInfo })` |
-| Protocol versions | 2026-07-28 and 2025-era clients (legacy stateless fallback). Tests send `MCP-Protocol-Version: 2025-06-18` |
+| Protocol versions | The current MCP protocol revision plus older clients through the SDK's stateless fallback. Check which revisions the chosen SDK supports, and have tests send an explicit `MCP-Protocol-Version` header |
 | Endpoint | `POST https://540news.com/mcp` (exact path) |
 | Sessions | None. New `McpServer` per request. Legacy GET/DELETE session calls get 405 |
 | Request headers | `Authorization: Bearer <token>`, `Content-Type: application/json`, `Accept: application/json, text/event-stream` |

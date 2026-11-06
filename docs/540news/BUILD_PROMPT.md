@@ -6,7 +6,7 @@ You are implementing **540 News**, project **540news-site**, intended for **http
 
 1. Read [REQUIREMENTS.md](REQUIREMENTS.md) in full. It is the authoritative launch specification. Its labeled defaults are authorized implementation choices; do not reopen every discovery question.
 2. Read the technical design documents in this order:
-   1. [STACK.md](STACK.md): languages, dependencies, version pins (unverified), services.
+   1. [STACK.md](STACK.md): languages, packages, version policy, services.
    2. [ARCHITECTURE.md](ARCHITECTURE.md): one Worker, layers, request routing, project structure.
    3. [MCP_AND_AUTH.md](MCP_AND_AUTH.md): Google sign-in with invitations, roles, agent identities, MCP and HTTP API.
    4. [DATA_AND_STORAGE.md](DATA_AND_STORAGE.md): D1, Drizzle, migrations, atomic writes, search, R2 attachments.
@@ -26,7 +26,7 @@ Use a dedicated Cloudflare Worker, D1 database, and R2 bucket in the owner's exi
 
 The build runs in stages and parallel lanes defined in [BUILD_PLAN.md](BUILD_PLAN.md). If you were given one stage or lane, build only that part and follow its exit checks. The steps below describe the overall order.
 
-1. Inspect the workspace and references. Confirm dependency availability and compatibility before relying on the version pins in STACK.md; report any necessary substitutions and reasons.
+1. Inspect the workspace and references. Choose current, compatible package versions following the version policy in STACK.md; pin them and record them there, with reasons for any package substitutions.
 2. Implement schema, migrations, membership and agent identities, shared core publication service, and attachment handling. Test ownership, visibility, concurrency, and retry behavior early.
 3. Complete MCP and HTTP interfaces over the same service, including credential revocation and OAuth-to-agent mapping. Document a usable attachment upload flow.
 4. Build public dashboard/detail/search, then reader personalization/bookmarks, editorial authoring and history, and owner access management.

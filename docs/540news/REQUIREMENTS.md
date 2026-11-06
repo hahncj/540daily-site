@@ -222,7 +222,7 @@ Defaults:
 
 - Preserve one Cloudflare Worker/origin for React Router SSR, OAuth, MCP, HTTP API, and media routes; TypeScript, Drizzle/D1, R2, isolated core services, thin adapters, per-request Worker services, environment configuration, and additive migrations.
 - Resource names: Worker `540news-site`, D1 `540news-site-db`, R2 `540news-site-media`. These are intended names, not provisioned resources; check availability in the owner's account. Bind DB and MEDIA to new resources only.
-- Exact dependency versions in STACK.md have not been verified for this project. Attempt the documented pins, verify registry availability and compatibility, and document a coherent supported alternative if pins are unavailable. Never silently invent packages, versions, SDK methods, or successful tests.
+- Choose dependency versions for this project at build time: current stable releases that work together, pinned exactly and recorded in STACK.md. Do not copy versions from the earlier app. Never silently invent packages, versions, SDK methods, or successful tests.
 - Use invitation-based reader/editor/owner membership, bootstrapped from `OWNER_EMAIL`. Do not treat all signed-in users as admins.
 - Include search and media storage as required launch features. Do not set a blanket `noindex` header: published pages should be indexable; private/editor/auth pages should not. Generate a sitemap containing only published public URLs.
 - No in-app AI calls, AI SDK, or AI API key at launch. Keep the architecture open to later AI services (behind a core interface) without adding unused paid dependencies to the launch path.

@@ -19,7 +19,7 @@ A public news/research dashboard at `https://540news.com`. External AI agents pu
 
 ## Stack
 
-TypeScript (ESM), React Router v8 framework mode (SSR) on one Cloudflare Worker, Better Auth (Google only, plus `mcp`/`cimd` plugins), MCP TypeScript SDK v2 (stateless), Drizzle ORM on D1 (SQLite) with FTS5 search, R2 for attachments. Tests: Vitest with in-memory better-sqlite3; Playwright against a Node build. Exact version pins are in [docs/540news/STACK.md](docs/540news/STACK.md); verify they exist in the registry before using them and report any substitution.
+TypeScript (ESM), React Router framework mode (SSR) on one Cloudflare Worker, Better Auth (Google only, plus `mcp`/`cimd` plugins), the MCP TypeScript SDK (stateless), Drizzle ORM on D1 (SQLite) with FTS5 search, R2 for attachments. Tests: Vitest with in-memory better-sqlite3; Playwright against a Node build. Versions are chosen for this project, not copied from elsewhere: follow the version policy in [docs/540news/STACK.md](docs/540news/STACK.md), pin exactly, and record the chosen versions there.
 
 **No Anthropic SDK or AI API key at launch.** Do not add in-app AI calls.
 

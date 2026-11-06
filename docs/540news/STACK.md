@@ -1,68 +1,82 @@
 # Stack
 
-The stack and version pins below come from an earlier production app built on the same pattern. They have **not been verified for 540 News**. Before relying on a pin, check that it exists in the npm registry and works with the others. If a pin is unavailable, pick a coherent supported alternative and record the substitution and the reason in the completion report.
+Which technologies 540 News uses and how to choose their versions. The library choices follow a pattern that worked in an earlier app. **Versions do not come from that app.** 540 News chooses its own versions when it is built.
 
-Keep exact pins (no `^` ranges) and keep all Better Auth packages on the same version. Upgrade later as separate, tested changes.
+## 1. Version policy
 
-## Languages and runtimes
+- **Stage 0 picks the versions.** Use the current stable release of each package, checked in the npm registry and the package's own docs at build time. Choose versions that work together: for example, a TypeScript version that typescript-eslint supports, a Vite version that React Router's and Cloudflare's Vite plugins support, and Better Auth plugins that match the Better Auth core version.
+- **Pin exactly.** Use exact versions in `package.json` (no `^` or `~`), commit `package-lock.json`, and keep packages from one family (all `better-auth` / `@better-auth/*`, all `react-router` / `@react-router/*`) on matching versions.
+- **Record the choices** in section 5 of this file: package, version, and date chosen. Note any package that had to be replaced and why.
+- **Code samples are guidance, not a contract.** The samples in these docs show the API shapes the design relies on (for example `createMcpHandler`, `verifyJwsAccessToken`, the `mcp` and `cimd` plugins). If the chosen version's API differs, follow the current docs and keep the behavior the design describes. Record notable differences.
+- **Never invent** packages, versions, or SDK methods. If something the design needs does not exist in a current release, stop and report it.
+- Upgrades after launch are separate, tested changes.
 
-| Item | Version | Note |
+## 2. Languages and runtimes
+
+| Item | Choice | How to set the version |
 | --- | --- | --- |
-| TypeScript | 6.0.3 | 6.x chosen over 7 because typescript-eslint did not yet support 7 |
-| Node.js | `>=22.12` (`engines`) | Used for tooling, tests, and the Node test host |
-| npm | `>=11` (`engines`) | If the global npm is older: `npx npm@11 install` |
-| Module system | ESM (`"type": "module"`) | |
-| Cloudflare Workers runtime | `compatibility_date: "2026-11-01"`, `compatibility_flags: ["nodejs_compat"]` | Set in `wrangler.jsonc` |
+| TypeScript | Strict mode, ESM (`"type": "module"`) | Newest release supported by typescript-eslint |
+| Node.js | Tooling, tests, and the Node test host | Current active LTS; set `engines` to match |
+| npm | Package manager | The version bundled with that Node LTS or newer; set `engines` to match |
+| Cloudflare Workers runtime | `nodejs_compat` flag | Set `compatibility_date` to the date the project is scaffolded |
 
-Add an `allowScripts` block to `package.json` that allows install scripts only for `esbuild`, `better-sqlite3`, `workerd`, and `fsevents`, at the versions the lockfile resolves.
+Add an `allowScripts` block to `package.json` that allows install scripts only for the packages that need them (expected: `esbuild`, `better-sqlite3`, `workerd`, `fsevents`), at the versions the lockfile resolves.
 
-## Runtime dependencies
+## 3. Packages
 
-| Package | Version | Role |
-| --- | --- | --- |
-| `react`, `react-dom` | 19.3.1 | UI; SSR with `renderToReadableStream` (works on Workers and Node) |
-| `react-router` | 8.5.1 | Framework mode: routing, loaders/actions, SSR, `createRequestHandler` |
-| `@modelcontextprotocol/server` | 2.4.0 | MCP TypeScript SDK v2: `McpServer`, `createMcpHandler` |
-| `zod` | 4.6.7 | Env parsing, input validation, MCP tool input schemas |
-| `drizzle-orm` | 0.45.4 | ORM: `drizzle-orm/d1` on Workers, `drizzle-orm/better-sqlite3` in tests |
-| `better-auth` | 1.7.15 | Google sign-in, sessions, JWT plugin, OAuth provider for MCP |
-| `@better-auth/mcp` | 1.7.15 | OAuth 2.1 authorization server and protected-resource metadata for `/mcp` |
-| `@better-auth/cimd` | 1.7.15 | Client ID Metadata Documents (how current MCP clients identify themselves) |
-| `@better-auth/oauth-provider` | 1.7.15 | `verifyOAuthQueryParams` (consent page), `oauthProviderClient` (browser) |
-| `@better-auth/core` | 1.7.15 | `isPublicRoutableHost`, used to guard outbound metadata fetches |
-| `better-call` | 1.4.4 | Tests sign session cookies with `serializeSignedCookie`; match Better Auth |
-| `better-sqlite3` | 13.0.3 | SQLite driver for tests and the Node test host (native module) |
-| `@remix-run/node-fetch-server` | 0.14.2 | Node test host only: adapts `node:http` to fetch-style handlers |
+### Runtime
 
-Not needed: `@react-router/node` and `isbot` were listed in the earlier app but never imported. Leave them out unless the build needs them.
+| Package | Role |
+| --- | --- |
+| `react`, `react-dom` | UI; SSR with `renderToReadableStream` (works on Workers and Node) |
+| `react-router` | Framework mode: routing, loaders/actions, SSR, `createRequestHandler` |
+| `@modelcontextprotocol/server` | MCP TypeScript SDK: `McpServer` and a web-standard (`Request`/`Response`) Streamable HTTP handler with stateless mode |
+| `zod` | Env parsing, input validation, MCP tool input schemas |
+| `drizzle-orm` | ORM: `drizzle-orm/d1` on Workers, `drizzle-orm/better-sqlite3` in tests |
+| `better-auth` | Google sign-in, sessions, JWT plugin, OAuth provider for MCP |
+| `@better-auth/mcp` | OAuth 2.1 authorization server and protected-resource metadata for `/mcp` |
+| `@better-auth/cimd` | Client ID Metadata Documents (how current MCP clients identify themselves) |
+| `@better-auth/oauth-provider` | `verifyOAuthQueryParams` (consent page), `oauthProviderClient` (browser) |
+| `@better-auth/core` | `isPublicRoutableHost`, used to guard outbound metadata fetches |
+| `better-call` | Tests sign session cookies with `serializeSignedCookie`; match Better Auth's version |
+| `better-sqlite3` | SQLite driver for tests and the Node test host (native module) |
+| `@remix-run/node-fetch-server` | Node test host only: adapts `node:http` to fetch-style handlers |
+| Markdown parser and HTML sanitizer (**to choose**) | Must run on Workers, turn off raw HTML, check link protocols, and allow rewriting `attachment:ID` image references |
 
-**Still to choose (no pin carried over):** a Markdown parser and HTML sanitizer that run on Workers. They must support turning off raw HTML, link-protocol checks, and rewriting `attachment:ID` image references. Record the choice and its version.
+If a Better Auth plugin has since been renamed or merged into the core package, use its current equivalent and record the change.
 
-## Dev dependencies
+### Development
 
-| Package | Version | Role |
-| --- | --- | --- |
-| `wrangler` | 4.157.0 | Local bindings, D1 migrations, secrets, deploy, `wrangler types` |
-| `@cloudflare/vite-plugin` | 1.67.0 | Runs the app in workerd during `vite dev` and build |
-| `@react-router/dev` | 8.5.1 | React Router CLI (`dev`, `build`, `typegen`) and Vite plugin |
-| `vite` | 8.3.5 | Build tool |
-| `drizzle-kit` | 0.31.11 | Generates SQL migrations from the schema |
-| `auth` | 1.7.15 | Better Auth CLI: generates the auth tables' Drizzle schema |
-| `vitest` | 5.1.0 | Unit and integration tests |
-| `@playwright/test` | 1.64.1 | Browser tests |
-| `@axe-core/playwright` | 4.14.0 | Accessibility checks in browser tests |
-| `eslint` | 10.14.0 | Linting |
-| `typescript-eslint` | 8.72.1 | TS lint rules and the core-isolation rule |
-| `@types/node` | 26.6.6 | |
-| `@types/react`, `@types/react-dom` | 19.3.0 | |
-| `@types/better-sqlite3` | 9.6.0 | |
+| Package | Role |
+| --- | --- |
+| `wrangler` | Local bindings, D1 migrations, secrets, deploy, `wrangler types` |
+| `@cloudflare/vite-plugin` | Runs the app in workerd during `vite dev` and build |
+| `@react-router/dev` | React Router CLI (`dev`, `build`, `typegen`) and Vite plugin |
+| `vite` | Build tool |
+| `drizzle-kit` | Generates SQL migrations from the schema |
+| `auth` (Better Auth CLI) | Generates the auth tables' Drizzle schema |
+| `vitest` | Unit and integration tests |
+| `@playwright/test` | Browser tests |
+| `@axe-core/playwright` | Accessibility checks in browser tests |
+| `eslint`, `typescript-eslint` | Linting and the core-isolation rule |
+| `@types/node`, `@types/react`, `@types/react-dom`, `@types/better-sqlite3` | Types |
 
-## Not part of the launch stack
+Leave out packages nothing imports (the earlier app listed `@react-router/node` and `isbot` without using them).
+
+## 4. Not part of the launch stack
 
 - **No Anthropic SDK and no AI API key.** 540 News makes no in-app AI calls at launch. If AI features are added later, put them behind an interface in `server/core/` with an adapter in `server/ai/`, so core code never imports a provider SDK and tests use a fake.
 - No KV, Durable Objects, Queues, cron triggers, or external databases.
 
-## Cloud and external services
+## 5. Chosen versions
+
+Filled in during Stage 0.
+
+| Package or tool | Version | Date chosen | Notes |
+| --- | --- | --- | --- |
+| — | — | — | — |
+
+## 6. Cloud and external services
 
 | Service | Role |
 | --- | --- |
