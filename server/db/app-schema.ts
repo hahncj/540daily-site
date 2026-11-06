@@ -1,4 +1,4 @@
-// 540 News tables. Logical entities: REQUIREMENTS.md section 7. Conventions: DATA_AND_STORAGE.md section 3.
+// 540 Daily tables. Logical entities: REQUIREMENTS.md section 7. Conventions: DATA_AND_STORAGE.md section 3.
 // Migrations only add tables, columns, and indexes. After a change: `npm run db:generate`, review, commit with meta/.
 import { sql } from "drizzle-orm";
 import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";

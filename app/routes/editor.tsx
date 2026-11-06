@@ -4,7 +4,7 @@ import { servicesContext } from "../context";
 import type { Route } from "./+types/editor";
 
 export function meta(_: Route.MetaArgs) {
-  return [{ title: "Editor · 540 News" }];
+  return [{ title: "Editor · 540 Daily" }];
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {

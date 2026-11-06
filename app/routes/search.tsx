@@ -2,7 +2,7 @@ import { PageStub } from "../components/page-stub";
 import type { Route } from "./+types/search";
 
 export function meta(_: Route.MetaArgs) {
-  return [{ title: "Search · 540 News" }];
+  return [{ title: "Search · 540 Daily" }];
 }
 
 export default function Search() {

@@ -1,8 +1,8 @@
 # Data and storage
 
-How 540 News stores data in D1 and attachments in R2. The logical entities are listed in [REQUIREMENTS.md](REQUIREMENTS.md) section 7. **Proven** patterns worked in the earlier production app this design is based on; **Proposed** items are 540 News design choices the build agent may refine with a recorded reason.
+How 540 Daily stores data in D1 and attachments in R2. The logical entities are listed in [REQUIREMENTS.md](REQUIREMENTS.md) section 7. **Proven** patterns worked in the earlier production app this design is based on; **Proposed** items are 540 Daily design choices the build agent may refine with a recorded reason.
 
-Use only the dedicated resources: D1 `540news-site-db` (binding `DB`) and R2 `540news-site-media` (binding `MEDIA`). Never bind to another site's database or bucket.
+Use only the dedicated resources: D1 `540daily-site-db` (binding `DB`) and R2 `540daily-site-media` (binding `MEDIA`). Never bind to another site's database or bucket.
 
 ## 1. Database client
 
@@ -48,7 +48,7 @@ export function changesOf(result: unknown): number {
 
 **Constraint:** statements in one `atomic()` call cannot read each other's results. Read first, then write in one batch. Use generated IDs (from `newId()`), conditional `WHERE` clauses, and subselects instead of reading back inserted rows.
 
-### Applying it to 540 News writes (Proposed)
+### Applying it to 540 Daily writes (Proposed)
 
 **Agent create with retry protection** ([REQUIREMENTS.md](REQUIREMENTS.md) A5):
 

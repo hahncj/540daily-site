@@ -1,4 +1,6 @@
-# 540 News — Discovery Decision Record
+# 540 Daily — Discovery Decision Record
+
+**Name note:** the product was called "540 News" (`540news.com`, `540news-site`) until D37 renamed it to **540 Daily** (`540daily.com`, `540daily-site`). Older entries below keep the name in use at the time.
 
 Recorded: 2026-11-05. Historical record of the discovery conversation. Some implementation details were inferred while documenting answers; the consolidated requirements distinguish product decisions from recommended defaults. Earlier mentions of open details are resolved by later decisions or the final requirements.
 
@@ -351,3 +353,13 @@ Confirmed by the owner on 2026-11-06. Supersedes the stable agent identity in D1
 - Guardrails kept: agent interfaces only create publications and update the member's own publications; they have no unpublish, restore, delete, layout, or access-management operations.
 - Duplicate-retry protection is scoped to the member, so retries across MCP and HTTP still return one publication.
 - Members manage their own connections and keys; the owner can revoke any member's.
+
+## D37 — Rename to 540 Daily
+
+Confirmed by the owner on 2026-11-06. Supersedes the names in D34.
+
+- Product display name: **540 Daily**.
+- Project and repository name: `540daily-site` (GitHub `hahncj/540daily-site`).
+- Website address and production origin: `https://540daily.com`.
+- Cloudflare resource names: Worker `540daily-site`, D1 `540daily-site-db`, R2 `540daily-site-media`.
+- Domain ownership and DNS for `540daily.com` have not been verified.

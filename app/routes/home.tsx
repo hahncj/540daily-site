@@ -2,7 +2,7 @@ import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "540 News" },
+    { title: "540 Daily" },
     { name: "description", content: "News and research, organized by category." },
   ];
 }
@@ -11,7 +11,7 @@ export function meta(_: Route.MetaArgs) {
 export default function Home() {
   return (
     <section aria-labelledby="page-title">
-      <h1 id="page-title">540 News</h1>
+      <h1 id="page-title">540 Daily</h1>
       <p className="notice muted">No stories have been published yet. Category panels appear here once they are.</p>
     </section>
   );

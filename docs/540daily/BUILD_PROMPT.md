@@ -1,6 +1,6 @@
-# Build 540 News
+# Build 540 Daily
 
-You are implementing **540 News**, project **540news-site**, intended for **https://540news.com**.
+You are implementing **540 Daily**, project **540daily-site**, intended for **https://540daily.com**.
 
 ## Read first
 

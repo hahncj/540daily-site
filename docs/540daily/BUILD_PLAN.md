@@ -141,7 +141,7 @@ Do not split one lane across several sessions. Lanes are already sized so one se
 ### Starting prompt for a stage or lane session
 
 ```text
-Build <stage/lane name> of 540 News, as defined in docs/540news/BUILD_PLAN.md.
+Build <stage/lane name> of 540 Daily, as defined in docs/540daily/BUILD_PLAN.md.
 Read AGENTS.md, BUILD_PROMPT.md, REQUIREMENTS.md, and the technical docs it lists.
 Work on branch feature/stage-<id>-<topic> from current main.
 Stay inside the folders this lane owns; note anything outside them instead of changing it.

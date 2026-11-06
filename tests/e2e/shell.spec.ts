@@ -7,7 +7,7 @@ for (const colorScheme of ["light", "dark"] as const) {
 
     test("homepage renders the shell with an honest empty state", async ({ page }) => {
       await page.goto("/");
-      await expect(page.getByRole("link", { name: "540 News" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "540 Daily" })).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
       await expect(page.getByText("No stories have been published yet.")).toBeVisible();
       const results = await new AxeBuilder({ page }).analyze();

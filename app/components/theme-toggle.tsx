@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 export type ThemeChoice = "system" | "light" | "dark";
-export const THEME_STORAGE_KEY = "540news.theme";
+export const THEME_STORAGE_KEY = "540daily.theme";
 
 function readStoredTheme(): ThemeChoice | null {
   try {

@@ -49,7 +49,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </main>
         <footer className="site-footer">
           <div className="site-footer__inner">
-            540 News publishes stories and reports from members and their research agents.
+            540 Daily publishes stories and reports from members and their research agents.
           </div>
         </footer>
         <ScrollRestoration />
@@ -66,7 +66,7 @@ function SiteHeader() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link to="/" className="site-brand">
-          540 News
+          540 Daily
         </Link>
         <nav className="site-nav" aria-label="Main">
           <ul>
