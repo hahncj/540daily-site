@@ -5,6 +5,7 @@ build/
 data/
 coverage/
 .dev.vars
+hosting/cloudflare/.dev.vars
 .env
 *.log
 .DS_Store
@@ -12,3 +13,5 @@ coverage/
 .e2e-fresh/
 test-results/
 playwright-report/
+# Root-level output if `wrangler types` is run without the project's output path.
+/worker-configuration.d.ts

@@ -1,0 +1,12 @@
+# Copy to hosting/cloudflare/.dev.vars (git-ignored). Placeholders only; never commit real values.
+PUBLIC_BASE_URL=http://localhost:5173
+OWNER_EMAIL=owner@example.com
+# Generate with: openssl rand -base64 32
+BETTER_AUTH_SECRET=replace-with-at-least-32-random-characters
+GOOGLE_CLIENT_ID=replace-me.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=replace-me
+# Optional overrides
+# CLIENT_IP_HEADER=cf-connecting-ip
+# RATE_LIMIT_REQUESTS_PER_MIN=60
+# RATE_LIMIT_WRITES_PER_MIN=10
+# RATE_LIMIT_UPLOADS_PER_MIN=5
