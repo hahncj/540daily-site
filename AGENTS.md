@@ -4,7 +4,16 @@ Guidance for coding agents working in this repository.
 
 ## Current state
 
-No application code exists yet. The repo holds only the specification and technical design in [docs/540news/](docs/540news/). The commands and folders below are the **planned** layout. Check that a file or script exists before relying on it, and update this file as the real project takes shape.
+Stage 0 (Foundation) is built: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540news/BUILD_PLAN.md](docs/540news/BUILD_PLAN.md).
+
+Stage 0 notes for later lanes:
+
+- Node 26 LTS is required (Vitest 5 rejects Node 23). Versions and reasons are in [STACK.md section 5](docs/540news/STACK.md).
+- Planned services are `PlannedService` placeholders in `server/app.ts` that throw when called. Replace one with the real `createX()` from `server/core/` when you build it.
+- `/mcp` and `/api/v1/*` return 503 and `/attachments/*` returns 404 until lanes 2A and 2B replace those branches in `handleRequest`.
+- Tests sign in through Better Auth's real Google ID-token endpoint with `signInWithGoogle()`; only Google's signature check is replaced (`googleTestOverrides`). Use `sessionCookieFor()` when a test just needs a member.
+- `npm run typegen` reads `.dev.vars.example` so the generated Worker types do not depend on a local `.dev.vars`.
+- Playwright browsers are not installed by `npm install`: run `npx playwright install chromium webkit`.
 
 ## Document authority (read before building)
 
@@ -23,7 +32,7 @@ TypeScript (ESM), React Router framework mode (SSR) on one Cloudflare Worker, Be
 
 **No Anthropic SDK or AI API key at launch.** Do not add in-app AI calls.
 
-## Planned commands
+## Commands
 
 From [docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md](docs/540news/DEVELOPMENT_AND_DEPLOYMENT.md):
 
