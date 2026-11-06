@@ -4,16 +4,16 @@ Guidance for coding agents working in this repository.
 
 ## Current state
 
-No application code exists yet. The repo holds only the specification and a starter kit in [docs/](docs/). The commands and folders below are the **planned** layout from the kit. Check that a file or script exists before relying on it, and update this file as the real project takes shape.
+No application code exists yet. The repo holds only the specification and a starter kit in [docs/](docs/): [docs/540news/](docs/540news/) for this app, [docs/starter-kit/](docs/starter-kit/) for the reference kit. The commands and folders below are the **planned** layout from the kit. Check that a file or script exists before relying on it, and update this file as the real project takes shape.
 
 ## Document authority (read before building)
 
-1. [docs/540_NEWS_BUILD_PROMPT.md](docs/540_NEWS_BUILD_PROMPT.md): entry point and build workflow.
-2. [docs/540_NEWS_REQUIREMENTS.md](docs/540_NEWS_REQUIREMENTS.md): **authoritative spec**. Wins over every other doc. "Default" items in it are authorized choices; do not reopen them.
-3. Starter kit, in the order listed in [docs/README.md](docs/README.md) (STACK, ARCHITECTURE, PROJECT_STRUCTURE, MCP_AND_CLAUDE, DATABASE_AND_CLOUD, IMPLEMENTATION_PATTERNS, DEVELOPMENT, DEPLOYMENT, DECISIONS_AND_GAPS). It describes a different "source app"; use its patterns, not its business features.
-4. [docs/540_NEWS_DECISIONS.md](docs/540_NEWS_DECISIONS.md): history only. Its open items are resolved by the requirements.
+1. [docs/540news/BUILD_PROMPT.md](docs/540news/BUILD_PROMPT.md): entry point and build workflow.
+2. [docs/540news/REQUIREMENTS.md](docs/540news/REQUIREMENTS.md): **authoritative spec**. Wins over every other doc. "Default" items in it are authorized choices; do not reopen them.
+3. Starter kit, in the order listed in [docs/starter-kit/README.md](docs/starter-kit/README.md) (STACK, ARCHITECTURE, PROJECT_STRUCTURE, MCP_AND_CLAUDE, DATABASE_AND_CLOUD, IMPLEMENTATION_PATTERNS, DEVELOPMENT, DEPLOYMENT, DECISIONS_AND_GAPS). It describes a different "source app"; use its patterns, not its business features.
+4. [docs/540news/DECISIONS.md](docs/540news/DECISIONS.md): history only. Its open items are resolved by the requirements.
 
-Ignore [docs/NEW_APP_PROMPT.md](docs/NEW_APP_PROMPT.md) where it conflicts with the requirements (e.g. its mandatory AI suggestion feature). Never delete or rewrite the reference docs.
+Ignore [docs/starter-kit/NEW_APP_PROMPT.md](docs/starter-kit/NEW_APP_PROMPT.md) where it conflicts with the requirements (e.g. its mandatory AI suggestion feature). Never delete or rewrite the reference docs.
 
 ## What 540 News is
 
@@ -21,13 +21,13 @@ A public news/research dashboard at `https://540news.com`. External AI agents pu
 
 ## Stack
 
-TypeScript (ESM), React Router v8 framework mode (SSR) on one Cloudflare Worker, Better Auth (Google only, plus `mcp`/`cimd` plugins), MCP TypeScript SDK v2 (stateless), Drizzle ORM on D1 (SQLite) with FTS5 search, R2 for attachments. Tests: Vitest with in-memory better-sqlite3; Playwright against a Node build. Exact version pins are in [docs/STACK.md](docs/STACK.md); verify they exist in the registry before using them and report any substitution.
+TypeScript (ESM), React Router v8 framework mode (SSR) on one Cloudflare Worker, Better Auth (Google only, plus `mcp`/`cimd` plugins), MCP TypeScript SDK v2 (stateless), Drizzle ORM on D1 (SQLite) with FTS5 search, R2 for attachments. Tests: Vitest with in-memory better-sqlite3; Playwright against a Node build. Exact version pins are in [docs/starter-kit/STACK.md](docs/starter-kit/STACK.md); verify they exist in the registry before using them and report any substitution.
 
 **No Anthropic SDK or AI API key at launch.** Do not add in-app AI calls.
 
 ## Planned commands
 
-From [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md):
+From [docs/starter-kit/DEVELOPMENT.md](docs/starter-kit/DEVELOPMENT.md):
 
 ```bash
 npm install
@@ -50,7 +50,7 @@ Never run `db:migrate:remote`, `deploy`, `wrangler secret`, or any provisioning/
 
 One Worker serves everything on one origin. `server/app.ts` `handleRequest` dispatches in order: `/health` → Better Auth (`/api/auth/*`, `/.well-known/*`) → `/mcp` → `/api/v1/*` → media routes → React Router.
 
-Layers (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)):
+Layers (see [docs/starter-kit/ARCHITECTURE.md](docs/starter-kit/ARCHITECTURE.md), [docs/starter-kit/PROJECT_STRUCTURE.md](docs/starter-kit/PROJECT_STRUCTURE.md)):
 
 - `server/core/`: pure business rules and repository interfaces. It may import only zod and other core files. An ESLint rule enforces this.
 - `server/adapters/`: Drizzle repositories, `atomic()` helper (D1 batch or SQLite transaction), media store.
