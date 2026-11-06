@@ -1,0 +1,14 @@
+node_modules/
+build/
+.react-router/
+.wrangler/
+data/
+coverage/
+.dev.vars
+.env
+*.log
+.DS_Store
+.e2e/
+.e2e-fresh/
+test-results/
+playwright-report/
