@@ -2,10 +2,23 @@ import type { ClientMetadataResourceFetch } from "@better-auth/oauth-provider";
 import { sql } from "drizzle-orm";
 import type { Database } from "./adapters/db";
 import type { MediaStore } from "./adapters/media";
+import { createAttachmentsRepository } from "./adapters/attachments-repo";
+import { createAuditRepository, createPublishingFailuresRepository } from "./adapters/audit-repo";
+import { createCategoriesRepository, createTagsRepository } from "./adapters/categories-repo";
+import { createMarkdownRenderer } from "./adapters/markdown";
 import { createMembersRepository } from "./adapters/members-repo";
+import { createPublicationsRepository } from "./adapters/publications-repo";
+import { createSearchRepository } from "./adapters/search-repo";
 import { AUTH_BASE_PATH, createAuth, MCP_PATH, type Auth, type GoogleTestOverrides } from "./auth/auth";
 import type { AppConfig } from "./config";
+import { createAttachments, type Attachments } from "./core/attachments";
+import { createAudit, type Audit } from "./core/audit";
+import { createCategories, createHomepage, createTags, type Categories, type Homepage, type Tags } from "./core/categories";
+import type { MarkdownRenderer } from "./core/markdown";
 import { createMembers, type Members } from "./core/members";
+import { createPublications, type Publications } from "./core/publications";
+import { createPublishingFailures, type PublishingFailures } from "./core/publishing-failures";
+import { createSearch, type Search } from "./core/search";
 import { planned, type PlannedService } from "./planned";
 
 /**
@@ -25,15 +38,15 @@ export interface Services {
   members: Members;
 
   // Stage 1: publishing core
-  publications: PlannedService<"publications">;
-  categories: PlannedService<"categories">;
-  tags: PlannedService<"tags">;
-  homepage: PlannedService<"homepage">;
-  search: PlannedService<"search">;
-  attachments: PlannedService<"attachments">;
-  markdown: PlannedService<"markdown">;
-  audit: PlannedService<"audit">;
-  publishingFailures: PlannedService<"publishingFailures">;
+  publications: Publications;
+  categories: Categories;
+  tags: Tags;
+  homepage: Homepage;
+  search: Search;
+  attachments: Attachments;
+  markdown: MarkdownRenderer;
+  audit: Audit;
+  publishingFailures: PublishingFailures;
   // Lane 2A: agent interfaces
   apiKeys: PlannedService<"apiKeys">;
   agents: PlannedService<"agents">;
@@ -69,6 +82,21 @@ export function createServices(deps: HostDeps): Services {
     googleTestOverrides: deps.googleTestOverrides,
   });
 
+  const audit = createAudit({ repo: createAuditRepository(deps.db), now, newId });
+  const publishingFailures = createPublishingFailures({ repo: createPublishingFailuresRepository(deps.db), now, newId });
+  const markdown = createMarkdownRenderer();
+  const attachments = createAttachments({ repo: createAttachmentsRepository(deps.db), storage: deps.media, audit, now, newId });
+  const categoriesRepo = createCategoriesRepository(deps.db);
+  const publications = createPublications({
+    repo: createPublicationsRepository(deps.db),
+    attachments,
+    markdown,
+    audit,
+    failures: publishingFailures,
+    now,
+    newId,
+  });
+
   return {
     config: deps.config,
     db: deps.db,
@@ -77,15 +105,15 @@ export function createServices(deps: HostDeps): Services {
     now,
     newId,
     members,
-    publications: planned("publications", "Stage 1"),
-    categories: planned("categories", "Stage 1"),
-    tags: planned("tags", "Stage 1"),
-    homepage: planned("homepage", "Stage 1"),
-    search: planned("search", "Stage 1"),
-    attachments: planned("attachments", "Stage 1"),
-    markdown: planned("markdown", "Stage 1"),
-    audit: planned("audit", "Stage 1"),
-    publishingFailures: planned("publishingFailures", "Stage 1"),
+    publications,
+    categories: createCategories({ repo: categoriesRepo }),
+    tags: createTags({ repo: createTagsRepository(deps.db) }),
+    homepage: createHomepage({ repo: categoriesRepo, audit, now }),
+    search: createSearch({ repo: createSearchRepository(deps.db) }),
+    attachments,
+    markdown,
+    audit,
+    publishingFailures,
     apiKeys: planned("apiKeys", "lane 2A"),
     agents: planned("agents", "lane 2A"),
     rateLimits: planned("rateLimits", "lane 2A"),

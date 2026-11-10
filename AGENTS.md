@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Current state
 
-Stage 0 (Foundation) is built: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md).
+Stage 0 (Foundation) and Stage 1 (Publishing core) are built. Stage 0: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md).
 
 Stage 0 notes for later lanes:
 
@@ -14,6 +14,15 @@ Stage 0 notes for later lanes:
 - Tests sign in through Better Auth's real Google ID-token endpoint with `signInWithGoogle()`; only Google's signature check is replaced (`googleTestOverrides`). Use `sessionCookieFor()` when a test just needs a member.
 - `npm run typegen` reads `.dev.vars.example` so the generated Worker types do not depend on a local `.dev.vars`.
 - Playwright browsers are not installed by `npm install`: run `npx playwright install chromium webkit`.
+
+Stage 1 (Publishing core) notes for later lanes:
+
+- `services.publications` is the one publishing service for editor forms, MCP, and HTTP. Pass an `Actor` (`server/core/actors.ts`): `{ kind: "member", userId, role }` from a page action, or `{ kind: "agent", userId, role, credentialKind, credentialId, label }` from agent auth. Core enforces the agent guardrails and role checks; callers only check that the member is active.
+- Results are `{ ok: true, value } | { ok: false, status, message, errors?, currentRevision? }` (`server/core/result.ts`). Map `status` with `HTTP_STATUS`. Agent failures are logged to `publishing_failures` automatically.
+- Schemas: `agentCreateShape`, `memberCreateShape`, `publicationUpdateShape` (includes `expectedRevision`), `searchShape`, `prepareUploadSchema`. Every `attachment:ID` in the body is added to `attachmentIds` automatically.
+- Uploads: `attachments.prepareUpload` returns a raw ticket `token`; the protocol layer builds the upload URL. `attachments.completeUpload(token, bytes)` checks size and signature. `attachments.open(viewer, id)` is the visibility check for `GET /attachments/:id` and returns the `Cache-Control` to send.
+- Render bodies with `publications.renderBody(publicationOrRevisionContent)`; never render Markdown another way.
+- Keyword search matches published items only (the FTS index holds nothing else), including for `search.agentSearch`; unfiltered agent browsing also lists the member's own unpublished items.
 
 ## Document authority (read before building)
 
