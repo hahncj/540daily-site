@@ -33,7 +33,7 @@ describe("handleRequest dispatch", () => {
     expect((await request(services, "/api/v1/categories")).status).toBe(401);
   });
 
-  it("attachments are not served before the visibility check exists", async () => {
+  it("unknown attachments are 404", async () => {
     const services = createTestServices();
     expect((await request(services, "/attachments/anything")).status).toBe(404);
   });

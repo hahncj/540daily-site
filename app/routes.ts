@@ -21,4 +21,5 @@ export default [
   route("account", "routes/account.tsx"),
   route("owner/*", "routes/owner.tsx"),
   route("sitemap.xml", "routes/sitemap.ts"),
+  route("robots.txt", "routes/robots.ts"),
 ] satisfies RouteConfig;

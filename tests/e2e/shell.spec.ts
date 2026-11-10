@@ -5,11 +5,11 @@ for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`app shell (${colorScheme})`, () => {
     test.use({ colorScheme });
 
-    test("homepage renders the shell with an honest empty state", async ({ page }) => {
+    test("homepage renders the shell with category panels and honest empty panels", async ({ page }) => {
       await page.goto("/");
       await expect(page.getByRole("link", { name: "540 Daily" })).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
-      await expect(page.getByText("No stories have been published yet.")).toBeVisible();
+      await expect(page.getByRole("region", { name: "Entertainment" }).getByText("Nothing published in Entertainment yet.")).toBeVisible();
       const results = await new AxeBuilder({ page }).analyze();
       expect(results.violations).toEqual([]);
     });
