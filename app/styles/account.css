@@ -1,0 +1,121 @@
+/* Account page and owner console (lane 3A). Uses the shared theme tokens, so light and dark both work. */
+.account-page {
+  display: grid;
+  gap: var(--space-6);
+}
+.account-page > h1 {
+  margin: 0;
+}
+.account-section {
+  display: grid;
+  gap: var(--space-3);
+}
+.account-section > h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.account-section > p {
+  margin: 0;
+}
+
+.owner-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0 0 var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+input[type="email"] {
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  max-width: 100%;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.inline-form .field {
+  flex: 1 1 16rem;
+}
+.inline-form .field input {
+  width: 100%;
+}
+
+.copy-field__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.copy-field__row input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.item-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+}
+.item-card--inactive {
+  background: var(--color-surface-muted);
+}
+.item-card__body {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+.item-card__title {
+  margin: 0 0 var(--space-1);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.item-card__meta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+.item-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.item-card__actions select {
+  min-width: 7rem;
+}
+
+.button--danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.secret-panel {
+  border-left: 4px solid var(--color-success);
+}
+.secret-panel h3 {
+  margin: 0 0 var(--space-2);
+}

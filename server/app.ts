@@ -27,7 +27,6 @@ import { createPublishingFailures, type PublishingFailures } from "./core/publis
 import { createSearch, type Search } from "./core/search";
 import { ATTACHMENTS_PREFIX, serveAttachment } from "./media-routes";
 import { handleMcp } from "./mcp/endpoint";
-import { planned, type PlannedService } from "./planned";
 import { createRateLimits, type RateLimits } from "./rate-limits";
 
 /**
@@ -60,8 +59,6 @@ export interface Services {
   apiKeys: ApiKeys;
   agents: Agents;
   rateLimits: RateLimits;
-  // Lane 3A: owner console
-  invitations: PlannedService<"invitations">;
   // Lane 3B: reader features
   preferences: Preferences;
   bookmarks: Bookmarks;
@@ -82,7 +79,8 @@ export interface HostDeps {
 export function createServices(deps: HostDeps): Services {
   const now = deps.now ?? (() => new Date());
   const newId = deps.newId ?? (() => crypto.randomUUID());
-  const members = createMembers({ repo: createMembersRepository(deps.db), ownerEmail: deps.config.ownerEmail, now, newId });
+  const audit = createAudit({ repo: createAuditRepository(deps.db), now, newId });
+  const members = createMembers({ repo: createMembersRepository(deps.db), audit, ownerEmail: deps.config.ownerEmail, now, newId });
   const auth = createAuth({
     config: deps.config,
     db: deps.db,
@@ -91,7 +89,6 @@ export function createServices(deps: HostDeps): Services {
     googleTestOverrides: deps.googleTestOverrides,
   });
 
-  const audit = createAudit({ repo: createAuditRepository(deps.db), now, newId });
   const publishingFailures = createPublishingFailures({ repo: createPublishingFailuresRepository(deps.db), now, newId });
   const markdown = createMarkdownRenderer();
   const attachments = createAttachments({ repo: createAttachmentsRepository(deps.db), storage: deps.media, audit, now, newId });
@@ -127,7 +124,6 @@ export function createServices(deps: HostDeps): Services {
     apiKeys: createApiKeys({ db: deps.db, audit, now, newId }),
     agents: createAgents({ db: deps.db, audit, now }),
     rateLimits: createRateLimits({ db: deps.db, config: deps.config, now }),
-    invitations: planned("invitations", "lane 3A"),
     preferences: createPreferences({
       repo: createPreferencesRepository(deps.db),
       lookups: { categoriesByIds: (ids) => categoriesRepo.getByIds(ids), tagsByIds: (ids) => tagsRepo.getByIds(ids) },

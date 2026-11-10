@@ -39,6 +39,12 @@ Lane 2C (Editor workspace) notes:
 - Editor previews call `publications.renderBody` with the Markdown's own `attachment:ID` references.
 - Playwright signs members in with `signInAs()` from `tests/e2e/helpers/members.ts`, which writes a test member and session into the test host's `.e2e` SQLite file (Google is never contacted).
 
+Lane 3A (Account and owner console) notes:
+
+- `/account` (own MCP connections; API keys for editors and the owner) and `/owner` (invitations, roles, status, every member's credentials, publishing failures, upload cleanup). Shared pieces are in `app/components/account/shared.tsx`.
+- Member management is in `services.members`: `invite`, `listInvitations`, `revokeInvitation`, `listMembers`, `changeRole`, `setStatus`. All are owner-only and return `Result`. The sole active owner cannot be demoted or disabled (one guarded SQL statement in `members-repo.ts`); owners cannot disable themselves. Disabling deletes the member's sessions.
+- The `services.invitations` placeholder was removed; invitations live in `services.members`.
+
 Lane 3B (Reader features) notes:
 
 - `services.preferences` (dashboard panels, interest tags, theme) and `services.bookmarks` take the signed-in member's own `userId`; never pass an ID from a form. The first `/dashboard` visit copies the public homepage layout (`seedFromHomepage`); later public changes never overwrite it.
