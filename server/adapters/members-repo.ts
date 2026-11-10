@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import type { MemberListItem, MemberRecord, MembersRepository } from "../core/members";
 import { invitations, memberships, session, user } from "../db/schema";
 import { atomic, changesOf } from "./atomic";
@@ -102,9 +102,11 @@ export function createMembersRepository(db: Database): MembersRepository {
         changes.status = status;
         changes.disabledAt = status === "disabled" ? now : null;
       }
-      // One statement, so two concurrent changes cannot both remove "the other" owner.
+      // One statement, judged on the row's current state, so concurrent changes cannot remove the last active owner.
       const anotherActiveOwner = sql`exists (select 1 from ${memberships} as other where other.role = 'owner' and other.status = 'active' and other.user_id <> ${userId})`;
-      const where = keepActiveOwner ? and(eq(memberships.userId, userId), anotherActiveOwner) : eq(memberships.userId, userId);
+      const where = keepActiveOwner
+        ? and(eq(memberships.userId, userId), or(ne(memberships.role, "owner"), ne(memberships.status, "active"), anotherActiveOwner))
+        : eq(memberships.userId, userId);
       const [updated] = await atomic(db, [
         () => db.update(memberships).set(changes).where(where),
         // Disabling ends every session at once (the membership check on each request is the main guard).

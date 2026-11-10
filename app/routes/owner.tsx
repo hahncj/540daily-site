@@ -81,7 +81,6 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   notFoundUnlessRoot(params);
   const form = await request.formData();
   const intent = field(form, "intent");
-  const memberEmail = async (userId: string) => (await services.members.listMembers(viewer))?.find((m) => m.userId === userId)?.email ?? "The member";
 
   switch (intent) {
     case "invite": {
@@ -99,17 +98,15 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       return { ok: true, message: "Invitation revoked. That email can no longer register." } satisfies ActionResult;
     }
     case "change-role": {
-      const userId = field(form, "userId");
-      const result = await services.members.changeRole(viewer, userId, field(form, "role"));
+      const result = await services.members.changeRole(viewer, field(form, "userId"), field(form, "role"));
       if (!result.ok) return refused(result.status, result.message);
-      return { ok: true, message: `${await memberEmail(userId)} is now ${ROLE_LABEL[result.value.role].toLowerCase()}.` } satisfies ActionResult;
+      return { ok: true, message: `${result.value.email} is now ${ROLE_LABEL[result.value.role].toLowerCase()}.` } satisfies ActionResult;
     }
     case "disable":
     case "enable": {
-      const userId = field(form, "userId");
-      const result = await services.members.setStatus(viewer, userId, intent === "disable" ? "disabled" : "active");
+      const result = await services.members.setStatus(viewer, field(form, "userId"), intent === "disable" ? "disabled" : "active");
       if (!result.ok) return refused(result.status, result.message);
-      const who = await memberEmail(userId);
+      const who = result.value.email;
       return {
         ok: true,
         message: intent === "disable" ? `${who} is disabled. Their sessions and agents stopped working.` : `${who} is active again.`,
@@ -126,6 +123,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
       return { ok: true, message: "API key revoked." } satisfies ActionResult;
     }
     case "cleanup-uploads": {
+      if (field(form, "confirm") !== "yes") return refused(422, "Tick the box to confirm the permanent deletion.", "confirm");
       const result = await services.attachments.cleanupUnreferenced(viewer);
       if (!result.ok) return refused(result.status, result.message);
       const n = result.value.deleted;
@@ -163,7 +161,7 @@ export default function Owner({ loaderData, actionData }: Route.ComponentProps) 
           ))}
         </ul>
       </nav>
-      <ActionMessage result={result} />
+      <ActionMessage result={result} fields={["email"]} />
 
       <section id="invitations" aria-labelledby="invitations-title" className="account-section">
         <h2 id="invitations-title">Invitations</h2>
@@ -182,7 +180,7 @@ export default function Owner({ loaderData, actionData }: Route.ComponentProps) 
               aria-describedby={emailError ? "invite-email-error" : undefined}
             />
             {emailError ? (
-              <p id="invite-email-error" className="field-error">
+              <p id="invite-email-error" className="field-error" role="alert">
                 {result.message}
               </p>
             ) : null}
@@ -322,8 +320,11 @@ export default function Owner({ loaderData, actionData }: Route.ComponentProps) 
         <p className="muted">
           Permanently delete uploaded images that no publication or revision references and that are older than seven days. Referenced images are always kept. This cannot be undone.
         </p>
-        <Form method="post">
+        <Form method="post" className="inline-form">
           <input type="hidden" name="intent" value="cleanup-uploads" />
+          <label className="radio">
+            <input type="checkbox" name="confirm" value="yes" required /> I understand these uploads are deleted permanently
+          </label>
           <button type="submit" className="button button--danger" disabled={busy}>
             Delete old unreferenced uploads
           </button>

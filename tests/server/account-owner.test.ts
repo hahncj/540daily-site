@@ -171,11 +171,11 @@ describe("A2: invitations, roles, and account status through the owner console",
     await ownerAction(services, owner.cookie, { intent: "enable", userId: second.userId });
     expect((await ownerAction(services, owner.cookie, { intent: "change-role", userId: owner.userId, role: "editor" })).status).toBe(200);
     expect((await membership(services, owner.userId)).role).toBe("editor");
-    // Now `second` is the sole owner and is protected in turn.
-    const secondCookie = (await sessionCookieFor(services, "third@example.test", "owner")).cookie;
-    await ownerAction(services, secondCookie, { intent: "disable", userId: second.userId });
-    const third = (await services.db.select().from(schema.user).where(eq(schema.user.email, "third@example.test")))[0]!;
-    expect((await services.members.changeRole({ userId: second.userId, role: "owner", status: "active" }, third.id, "reader")).ok).toBe(false);
+    // Now `second` is the sole owner and is protected in turn, even from the guarded write alone.
+    const secondRow = (await services.db.select().from(schema.user).where(eq(schema.user.email, "second-owner@example.test")))[0]!;
+    const asSecond = { userId: secondRow.id, role: "owner" as const, status: "active" as const };
+    expect(await services.members.changeRole(asSecond, second.userId, "reader")).toMatchObject({ ok: false, status: "conflict" });
+    expect(await membership(services, second.userId)).toMatchObject({ role: "owner", status: "active" });
   });
 
   it("only the owner can invite or change roles (A2, A3)", async () => {
@@ -188,7 +188,7 @@ describe("A2: invitations, roles, and account status through the owner console",
         { intent: "invite", email: "x@example.test" },
         { intent: "change-role", userId: reader.userId, role: "editor" },
         { intent: "disable", userId: reader.userId },
-        { intent: "cleanup-uploads" },
+        { intent: "cleanup-uploads", confirm: "yes" },
       ]) {
         expect((await ownerAction(services, cookie, fields)).status).toBe(403);
       }
@@ -353,12 +353,14 @@ describe("Owner console: publishing failures and upload cleanup", () => {
     clock.advance(8 * 24 * 3600 * 1000);
     const recent = await uploadImage(services, actor, PNG_BYTES);
 
-    const r = await ownerAction(services, owner.cookie, { intent: "cleanup-uploads" });
+    expect((await ownerAction(services, owner.cookie, { intent: "cleanup-uploads" })).status).toBe(422);
+    expect(await services.db.select().from(schema.attachments)).toHaveLength(2);
+    const r = await ownerAction(services, owner.cookie, { intent: "cleanup-uploads", confirm: "yes" });
     expect(r.status).toBe(200);
     expect((r.data as ActionData).message).toBe("Deleted 1 unreferenced upload.");
     const left = (await services.db.select({ id: schema.attachments.id }).from(schema.attachments)).map((a) => a.id);
     expect(left).toEqual([recent]);
     expect(left).not.toContain(old);
-    expect(((await ownerAction(services, owner.cookie, { intent: "cleanup-uploads" })).data as ActionData).message).toContain("No unreferenced uploads");
+    expect(((await ownerAction(services, owner.cookie, { intent: "cleanup-uploads", confirm: "yes" })).data as ActionData).message).toContain("No unreferenced uploads");
   });
 });

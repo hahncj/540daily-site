@@ -51,8 +51,9 @@ export interface MembersRepository {
   /** Mark an open invitation revoked. False when it is missing, accepted, or already revoked. */
   revokeInvitation(id: string, now: Date): Promise<boolean>;
   /**
-   * Change a member's role and/or status in one guarded statement. When `keepActiveOwner` is set, the
-   * write happens only if another active owner remains, so the sole owner can never be removed.
+   * Change a member's role and/or status in one guarded statement. When `keepActiveOwner` is set and the
+   * member is currently an active owner, the write happens only if another active owner remains, so the
+   * sole owner can never be removed (decided in SQL, not from an earlier read).
    * Disabling also deletes the member's sessions.
    */
   updateMember(input: {
@@ -159,18 +160,18 @@ export function createMembers({ repo, audit, ownerEmail, now, newId }: MembersDe
     },
 
     /** Owner only: change a member's role. The sole active owner cannot be demoted. */
-    async changeRole(actor: Acting, userId: string, role: string): Promise<Result<{ userId: string; role: Role }>> {
+    async changeRole(actor: Acting, userId: string, role: string): Promise<Result<{ userId: string; email: string; role: Role }>> {
       if (!isOwner(actor)) return notOwner();
       const parsed = roleSchema.safeParse(role);
       if (!parsed.success) return fail("invalid", "Invalid role.", { errors: { role: parsed.error.issues.map((i) => i.message) } });
       const target = await repo.findByUserId(userId);
       if (!target) return fail("not_found", "Member not found.");
-      if (target.role === parsed.data) return ok({ userId, role: parsed.data });
-      const outcome = await repo.updateMember({ userId, role: parsed.data, keepActiveOwner: target.role === "owner", now: now() });
+      if (target.role === parsed.data) return ok({ userId, email: target.email, role: parsed.data });
+      const outcome = await repo.updateMember({ userId, role: parsed.data, keepActiveOwner: parsed.data !== "owner", now: now() });
       if (outcome === "not_found") return fail("not_found", "Member not found.");
       if (outcome === "last_owner") return fail("conflict", "This is the only active owner. Make another member an owner first.");
       await record(actor, "member.role_change", { type: "member", id: userId }, { from: target.role, to: parsed.data });
-      return ok({ userId, role: parsed.data });
+      return ok({ userId, email: target.email, role: parsed.data });
     },
 
     /**
@@ -178,22 +179,17 @@ export function createMembers({ repo, audit, ownerEmail, now, newId }: MembersDe
      * at the next call because agent auth re-reads status. Owners cannot disable themselves, and the
      * sole active owner cannot be disabled.
      */
-    async setStatus(actor: Acting, userId: string, status: MemberStatus): Promise<Result<{ userId: string; status: MemberStatus }>> {
+    async setStatus(actor: Acting, userId: string, status: MemberStatus): Promise<Result<{ userId: string; email: string; status: MemberStatus }>> {
       if (!isOwner(actor)) return notOwner();
       if (status === "disabled" && userId === actor.userId) return fail("forbidden", "You can't disable your own account.");
       const target = await repo.findByUserId(userId);
       if (!target) return fail("not_found", "Member not found.");
-      if (target.status === status) return ok({ userId, status });
-      const outcome = await repo.updateMember({
-        userId,
-        status,
-        keepActiveOwner: status === "disabled" && target.role === "owner",
-        now: now(),
-      });
+      if (target.status === status) return ok({ userId, email: target.email, status });
+      const outcome = await repo.updateMember({ userId, status, keepActiveOwner: status === "disabled", now: now() });
       if (outcome === "not_found") return fail("not_found", "Member not found.");
       if (outcome === "last_owner") return fail("conflict", "This is the only active owner and cannot be disabled.");
       await record(actor, status === "disabled" ? "member.disable" : "member.enable", { type: "member", id: userId });
-      return ok({ userId, status });
+      return ok({ userId, email: target.email, status });
     },
   };
 }

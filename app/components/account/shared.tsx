@@ -12,10 +12,10 @@ export const accountLinks = () => [...editorLinks(), { rel: "stylesheet", href: 
 /** Result of every account/owner form action. `key` carries a new API key's secret, shown once. */
 export type ActionResult = { ok: true; message: string; key?: string; keyLabel?: string; inviteLink?: string } | { ok: false; message: string; field?: string };
 
-/** Success (polite status) or failure (alert) after a form action. */
-export function ActionMessage({ result }: { result: ActionResult | undefined }) {
+/** Success (polite status) or failure (alert) after a form action. Field errors are shown at their field instead. */
+export function ActionMessage({ result, fields = [] }: { result: ActionResult | undefined; fields?: string[] }) {
   if (!result) return null;
-  if (!result.ok) return <ErrorNotice message={result.message} />;
+  if (!result.ok) return result.field && fields.includes(result.field) ? null : <ErrorNotice message={result.message} />;
   return (
     <p className="notice notice--success" role="status">
       {result.message}

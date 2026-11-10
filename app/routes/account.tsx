@@ -88,7 +88,7 @@ export default function Account({ loaderData, actionData }: Route.ComponentProps
       <p>
         Signed in as <strong>{name}</strong> ({email}). Role: <strong>{ROLE_LABEL[role]}</strong>.
       </p>
-      <ActionMessage result={result} />
+      <ActionMessage result={result} fields={["label"]} />
 
       <section aria-labelledby="connections-title" className="account-section">
         <h2 id="connections-title">MCP connections</h2>
@@ -128,7 +128,7 @@ export default function Account({ loaderData, actionData }: Route.ComponentProps
                 aria-describedby={labelError ? "key-label-error" : undefined}
               />
               {labelError ? (
-                <p id="key-label-error" className="field-error">
+                <p id="key-label-error" className="field-error" role="alert">
                   {result.message}
                 </p>
               ) : null}
