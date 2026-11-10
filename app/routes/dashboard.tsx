@@ -4,9 +4,10 @@ import { data, Form, Link, useNavigation } from "react-router";
 import { moveCategory, type Category } from "../../server/core/categories";
 import { PANEL_SIZE } from "../../server/core/publications";
 import { HTTP_STATUS } from "../../server/core/result";
-import { requireRolePage, requireRoleWrite } from "../access.server";
+import { requireRolePage } from "../access.server";
 import { PublicationList } from "../components/publication-list";
 import { servicesContext } from "../context";
+import { readerWrite } from "../reader.server";
 import "../styles/reader.css";
 import type { Services } from "../../server/app";
 import type { Route } from "./+types/dashboard";
@@ -71,7 +72,9 @@ function failure(message: string, status: number) {
 /** Every change applies to the signed-in member's own preferences only. */
 export async function action({ request, context }: Route.ActionArgs) {
   const services = context.get(servicesContext);
-  const viewer = await requireRoleWrite(request, services, "reader");
+  const auth = await readerWrite(request, services);
+  if ("refused" in auth) return auth.refused;
+  const { viewer } = auth;
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
 
@@ -83,8 +86,8 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (intent === "tags") {
     const chosen = form.getAll("tag").map(String);
-    const [known, current] = await Promise.all([services.tags.listWithPublished(), services.preferences.dashboard(viewer.userId)]);
-    const allowed = new Set([...known, ...current.interestTags].map((t) => t.id));
+    const [known, current] = await Promise.all([services.tags.listWithPublished(), services.preferences.interestTags(viewer.userId)]);
+    const allowed = new Set([...known, ...current].map((t) => t.id));
     if (chosen.some((id) => !allowed.has(id))) return failure("Unknown interest tag. Reload the page and try again.", 422);
     const result = await services.preferences.setInterestTags(viewer.userId, chosen);
     if (!result.ok) return failure(result.message, HTTP_STATUS[result.status]);

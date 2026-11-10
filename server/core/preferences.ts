@@ -68,6 +68,9 @@ export function createPreferences({ repo, lookups, now }: { repo: PreferencesRep
       return ok(await repo.panels(userId));
     },
 
+    /** The member's selected interest tags. */
+    interestTags: (userId: string): Promise<Tag[]> => repo.interestTags(userId),
+
     async setInterestTags(userId: string, tagIds: readonly string[]): Promise<Result<Tag[]>> {
       const unique = [...new Set(tagIds)];
       if (unique.length > MAX_INTEREST_TAGS) return fail("invalid", `Choose at most ${MAX_INTEREST_TAGS} interests.`);

@@ -1,10 +1,12 @@
+import { useEffect, useRef, useState } from "react";
 import { data, Form, redirect, useLocation } from "react-router";
 import { HTTP_STATUS } from "../../server/core/result";
-import { requireRolePage, requireRoleWrite, safeNextPath } from "../access.server";
+import { requireRolePage, safeNextPath } from "../access.server";
 import { formatDate, isoString, pageParam } from "../components/format";
 import { Pagination } from "../components/pagination";
 import { PublicationListEntry } from "../components/publication-list";
 import { servicesContext } from "../context";
+import { readerWrite } from "../reader.server";
 import type { Route } from "./+types/saved";
 
 export function meta(_: Route.MetaArgs) {
@@ -25,7 +27,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
  */
 export async function action({ request, context }: Route.ActionArgs) {
   const services = context.get(servicesContext);
-  const viewer = await requireRoleWrite(request, services, "reader");
+  const auth = await readerWrite(request, services);
+  if ("refused" in auth) return auth.refused;
+  const { viewer } = auth;
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
   const publicationId = String(form.get("publicationId") ?? "");
@@ -45,9 +49,27 @@ export default function Saved({ loaderData, actionData }: Route.ComponentProps) 
   const { saved } = loaderData;
   const location = useLocation();
   const beyondLastPage = saved.items.length === 0 && saved.total > 0;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const previousTotal = useRef(saved.total);
+  const [status, setStatus] = useState("");
+
+  // A removed item takes its focused button with it: move focus to the heading and announce the change.
+  useEffect(() => {
+    if (saved.total < previousTotal.current) {
+      headingRef.current?.focus();
+      setStatus(`Removed from saved. ${saved.total === 1 ? "1 item" : `${saved.total} items`} left.`);
+    }
+    previousTotal.current = saved.total;
+  }, [saved.total]);
+
   return (
     <section aria-labelledby="page-title">
-      <h1 id="page-title">Saved</h1>
+      <h1 id="page-title" ref={headingRef} tabIndex={-1}>
+        Saved
+      </h1>
+      <p className="visually-hidden" role="status">
+        {status}
+      </p>
       <p className="muted">Only you can see what you save. Saved items show their latest published version.</p>
       {actionData && !actionData.ok ? (
         <p className="notice notice--error" role="alert">

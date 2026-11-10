@@ -172,6 +172,8 @@ test("A3 and placeholder: another reader sees none of it, and an unpublished boo
 
     await page.getByRole("button", { name: /^Remove unavailable item/ }).click();
     await expect(page.getByText("Nothing saved yet.")).toBeVisible();
+    // Focus moves to the heading instead of being lost with the removed item.
+    await expect(page.getByRole("heading", { level: 1, name: "Saved" })).toBeFocused();
   } finally {
     await editorContext.close();
   }

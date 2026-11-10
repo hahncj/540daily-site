@@ -39,6 +39,13 @@ Lane 2C (Editor workspace) notes:
 - Editor previews call `publications.renderBody` with the Markdown's own `attachment:ID` references.
 - Playwright signs members in with `signInAs()` from `tests/e2e/helpers/members.ts`, which writes a test member and session into the test host's `.e2e` SQLite file (Google is never contacted).
 
+Lane 3B (Reader features) notes:
+
+- `services.preferences` (dashboard panels, interest tags, theme) and `services.bookmarks` take the signed-in member's own `userId`; never pass an ID from a form. The first `/dashboard` visit copies the public homepage layout (`seedFromHomepage`); later public changes never overwrite it.
+- Save buttons: `PublicationList` takes `savedIds` (from `savedIdsFor()` in `app/reader.server.ts`; null when signed out hides the buttons). `BookmarkButton` posts to the `/saved` action; the header theme switcher posts `intent=theme` to the `/dashboard` action. Both use `readerWrite()` so a refused write shows inline instead of the error page.
+- Bookmarks of unpublished or draft items list as `{ kind: "unavailable" }` with no title or content.
+- Playwright: `signInExisting()` adds a second session for a member (another device). Set `E2E_PORT` to run browser tests in two worktrees at once (default 4173).
+
 ## Document authority (read before building)
 
 1. [docs/540daily/BUILD_PROMPT.md](docs/540daily/BUILD_PROMPT.md): entry point and build workflow. [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.
