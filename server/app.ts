@@ -9,6 +9,9 @@ import { createMarkdownRenderer } from "./adapters/markdown";
 import { createMembersRepository } from "./adapters/members-repo";
 import { createPublicationsRepository } from "./adapters/publications-repo";
 import { createSearchRepository } from "./adapters/search-repo";
+import { createAgents, type Agents } from "./agent-auth";
+import { createApiKeys, type ApiKeys } from "./api-keys";
+import { handleApiV1 } from "./api-v1";
 import { AUTH_BASE_PATH, createAuth, MCP_PATH, type Auth, type GoogleTestOverrides } from "./auth/auth";
 import type { AppConfig } from "./config";
 import { createAttachments, type Attachments } from "./core/attachments";
@@ -20,7 +23,9 @@ import { createPublications, type Publications } from "./core/publications";
 import { createPublishingFailures, type PublishingFailures } from "./core/publishing-failures";
 import { createSearch, type Search } from "./core/search";
 import { ATTACHMENTS_PREFIX, serveAttachment } from "./media-routes";
+import { handleMcp } from "./mcp/endpoint";
 import { planned, type PlannedService } from "./planned";
+import { createRateLimits, type RateLimits } from "./rate-limits";
 
 /**
  * Everything a request needs. Built per request on Workers (including the Better Auth instance);
@@ -49,9 +54,9 @@ export interface Services {
   audit: Audit;
   publishingFailures: PublishingFailures;
   // Lane 2A: agent interfaces
-  apiKeys: PlannedService<"apiKeys">;
-  agents: PlannedService<"agents">;
-  rateLimits: PlannedService<"rateLimits">;
+  apiKeys: ApiKeys;
+  agents: Agents;
+  rateLimits: RateLimits;
   // Lane 3A: owner console
   invitations: PlannedService<"invitations">;
   // Lane 3B: reader features
@@ -115,9 +120,9 @@ export function createServices(deps: HostDeps): Services {
     markdown,
     audit,
     publishingFailures,
-    apiKeys: planned("apiKeys", "lane 2A"),
-    agents: planned("agents", "lane 2A"),
-    rateLimits: planned("rateLimits", "lane 2A"),
+    apiKeys: createApiKeys({ db: deps.db, audit, now, newId }),
+    agents: createAgents({ db: deps.db, audit, now }),
+    rateLimits: createRateLimits({ db: deps.db, config: deps.config, now }),
     invitations: planned("invitations", "lane 3A"),
     preferences: planned("preferences", "lane 3B"),
     bookmarks: planned("bookmarks", "lane 3B"),
@@ -144,9 +149,9 @@ export async function handleRequest(request: Request, services: Services, render
   } else if (path === AUTH_BASE_PATH || path.startsWith(`${AUTH_BASE_PATH}/`) || path.startsWith("/.well-known/")) {
     response = await services.auth.handler(request);
   } else if (path === MCP_PATH) {
-    response = notYetAvailable("The MCP endpoint is built in lane 2A.");
+    response = await handleMcp(request, services);
   } else if (path === "/api/v1" || path.startsWith("/api/v1/")) {
-    response = notYetAvailable("The HTTP API is built in lane 2A.");
+    response = await handleApiV1(request, services);
   } else if ((request.method === "GET" || request.method === "HEAD") && path.startsWith(ATTACHMENTS_PREFIX)) {
     response = await serveAttachment(request, services);
   } else {
@@ -157,10 +162,6 @@ export async function handleRequest(request: Request, services: Services, render
   const out = new Response(response.body, response);
   if (PRIVATE_PATH.test(path)) out.headers.set("X-Robots-Tag", "noindex");
   return out;
-}
-
-function notYetAvailable(message: string) {
-  return Response.json({ status: "unavailable", message }, { status: 503, headers: NO_STORE });
 }
 
 async function health(services: Services): Promise<Response> {

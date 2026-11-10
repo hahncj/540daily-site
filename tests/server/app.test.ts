@@ -27,10 +27,10 @@ describe("handleRequest dispatch", () => {
     expect(await discovery.json()).toMatchObject({ resource: `${BASE_URL}/mcp` });
   });
 
-  it("/mcp and /api/v1 are reserved until lane 2A builds them", async () => {
+  it("/mcp and /api/v1 require agent credentials", async () => {
     const services = createTestServices();
-    expect((await request(services, "/mcp", { method: "POST" })).status).toBe(503);
-    expect((await request(services, "/api/v1/categories")).status).toBe(503);
+    expect((await request(services, "/mcp", { method: "POST" })).status).toBe(401);
+    expect((await request(services, "/api/v1/categories")).status).toBe(401);
   });
 
   it("unknown attachments are 404", async () => {
