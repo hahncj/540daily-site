@@ -4,6 +4,7 @@ import { pageParam, TYPE_PLURAL } from "../components/format";
 import { Pagination } from "../components/pagination";
 import { PublicationList } from "../components/publication-list";
 import { servicesContext } from "../context";
+import { savedIdsFor } from "../reader.server";
 import type { Route } from "./+types/category";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -38,11 +39,12 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     if (!isPublic) throw new Response("Not found", { status: 404 });
   }
 
-  return { category, type: type ?? null, results };
+  const savedIds = await savedIdsFor(request, services, results.items.map((i) => i.id));
+  return { category, type: type ?? null, results, savedIds };
 }
 
 export default function Category({ loaderData }: Route.ComponentProps) {
-  const { category, type, results } = loaderData;
+  const { category, type, results, savedIds } = loaderData;
   const base = `/categories/${category.slug}`;
   const params = new URLSearchParams(type ? { type } : {});
   const filters: Array<{ value: PublicationType | null; label: string }> = [
@@ -77,7 +79,7 @@ export default function Category({ loaderData }: Route.ComponentProps) {
           There are no more results. <Link to={type ? `${base}?type=${type}` : base}>Go to the first page</Link>.
         </p>
       ) : (
-        <PublicationList items={results.items} headingLevel={2} />
+        <PublicationList items={results.items} headingLevel={2} savedIds={savedIds} />
       )}
       <Pagination page={results.page} pageSize={results.pageSize} total={results.total} basePath={base} params={params} />
     </section>

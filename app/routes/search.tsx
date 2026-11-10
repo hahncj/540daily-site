@@ -7,6 +7,7 @@ import { pageParam, TYPE_PLURAL } from "../components/format";
 import { Pagination } from "../components/pagination";
 import { PublicationList } from "../components/publication-list";
 import { servicesContext } from "../context";
+import { savedIdsFor } from "../reader.server";
 import type { Route } from "./+types/search";
 
 const FIELDS = ["q", "category", "type", "from", "to"] as const;
@@ -35,13 +36,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const [result, categories] = await Promise.all([services.search.publicSearch(input), services.categories.listWithPublished()]);
   const base = { values, categories, noSearchableWords: Boolean(values.q) && toMatchExpression(values.q) === null };
   if (!result.ok) {
-    return data({ ...base, results: null, errors: result.errors ?? { _: [result.message] } }, { status: 400 });
+    return data({ ...base, results: null, errors: result.errors ?? { _: [result.message] }, savedIds: null }, { status: 400 });
   }
-  return { ...base, results: result.value, errors: null };
+  const savedIds = await savedIdsFor(request, services, result.value.items.map((i) => i.id));
+  return { ...base, results: result.value, errors: null, savedIds };
 }
 
 export default function Search({ loaderData }: Route.ComponentProps) {
-  const { values, categories, results, errors, noSearchableWords } = loaderData;
+  const { values, categories, results, errors, noSearchableWords, savedIds } = loaderData;
   const navigation = useNavigation();
   const params = new URLSearchParams(FIELDS.flatMap((f) => (values[f] ? [[f, values[f]]] : [])));
   const filtered = FIELDS.some((f) => values[f]);
@@ -193,7 +195,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
                 There are no more results. <Link to={params.size ? `/search?${params}` : "/search"}>Go to the first page</Link>.
               </p>
             ) : (
-              <PublicationList items={results.items} showCategory />
+              <PublicationList items={results.items} showCategory savedIds={savedIds} />
             )}
             <Pagination page={results.page} pageSize={results.pageSize} total={results.total} basePath="/search" params={params} label="Search result pages" />
           </>

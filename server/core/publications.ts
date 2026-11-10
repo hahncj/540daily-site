@@ -284,7 +284,8 @@ export interface PublicationsRepository {
   getRevision(id: string, revision: number): Promise<Revision | null>;
   /** `total` is 0 when `countTotal` is false (skips the count query). */
   listPublished(filter: { categoryId?: string; type?: PublicationType; excludeId?: string; limit: number; offset: number; countTotal?: boolean }): Promise<{ items: PublicationListItem[]; total: number }>;
-  latestPublishedPerCategory(categoryIds: readonly string[], perCategory: number): Promise<Map<string, PublicationListItem[]>>;
+  /** With `tagIds`, only items carrying at least one of those tags. */
+  latestPublishedPerCategory(categoryIds: readonly string[], perCategory: number, tagIds?: readonly string[]): Promise<Map<string, PublicationListItem[]>>;
   listAll(filter: { status?: PublicationStatus; creatorUserId?: string; limit: number; offset: number }): Promise<{ items: PublicationListItem[]; total: number }>;
 }
 
@@ -639,8 +640,12 @@ export function createPublications({ repo, attachments, markdown, audit, failure
       return { items, total, page, pageSize: PAGE_SIZE };
     },
 
-    /** Dashboard panels: the newest published items per category. */
-    latestPerCategory: (categoryIds: readonly string[], perCategory = PANEL_SIZE) => repo.latestPublishedPerCategory(categoryIds, perCategory),
+    /**
+     * Dashboard panels: the newest published items per category. With `tagIds` (a reader's interests),
+     * only items with any of those tags.
+     */
+    latestPerCategory: (categoryIds: readonly string[], perCategory = PANEL_SIZE, tagIds?: readonly string[]) =>
+      repo.latestPublishedPerCategory(categoryIds, perCategory, tagIds),
 
     /** Up to five published items from the same category, excluding this one, newest first. */
     async related(p: Pick<Publication, "id" | "category">): Promise<PublicationListItem[]> {

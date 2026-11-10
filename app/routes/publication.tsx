@@ -1,8 +1,10 @@
 import { Link, redirect } from "react-router";
 import { attribution, publicationPath } from "../../server/core/publications";
 import { formatDate, formatDateTime, isoString, TYPE_LABEL } from "../components/format";
+import { BookmarkButton } from "../components/bookmark-button";
 import { PublicationList } from "../components/publication-list";
 import { servicesContext } from "../context";
+import { savedIdsFor } from "../reader.server";
 import type { Route } from "./+types/publication";
 
 /** Edits within a minute of publishing are not worth a separate "Updated" line. */
@@ -26,7 +28,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
  * Published detail only. Drafts, unpublished items, and unknown IDs all return the same 404,
  * so nothing reveals that a private item exists. A wrong or missing slug redirects to the canonical path.
  */
-export async function loader({ params, context }: Route.LoaderArgs) {
+export async function loader({ request, params, context }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
   const publication = await services.publications.getPublic(params.id);
   if (!publication) throw new Response("Not found", { status: 404 });
@@ -39,6 +41,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     services.publications.renderBody(publication),
     services.publications.related(publication),
   ]);
+  const savedIds = await savedIdsFor(request, services, [publication.id, ...related.map((r) => r.id)]);
   const { bodyMarkdown: _body, attachmentIds: _attachments, ...shown } = publication;
   return {
     publication: {
@@ -49,12 +52,13 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     },
     bodyHtml,
     related,
+    savedIds,
     canonicalUrl: `${services.config.baseUrl}${canonicalPath}`,
   };
 }
 
 export default function Publication({ loaderData }: Route.ComponentProps) {
-  const { publication: p, bodyHtml, related } = loaderData;
+  const { publication: p, bodyHtml, related, savedIds } = loaderData;
   const showUpdated = p.publishedAt && new Date(p.updatedAt).getTime() - new Date(p.publishedAt).getTime() > UPDATED_THRESHOLD_MS;
 
   return (
@@ -97,6 +101,11 @@ export default function Publication({ loaderData }: Route.ComponentProps) {
             </div>
           ) : null}
         </dl>
+        {savedIds ? (
+          <div className="publication__actions">
+            <BookmarkButton publicationId={p.id} title={p.title} saved={savedIds.includes(p.id)} />
+          </div>
+        ) : null}
       </header>
 
       {/* Safe HTML from publications.renderBody: raw HTML is disabled and the output is allowlist-sanitized. */}
@@ -136,7 +145,7 @@ export default function Publication({ loaderData }: Route.ComponentProps) {
         {related.length === 0 ? (
           <p className="muted">No other publications in {p.category.name} yet.</p>
         ) : (
-          <PublicationList items={related} />
+          <PublicationList items={related} savedIds={savedIds} />
         )}
       </section>
     </article>

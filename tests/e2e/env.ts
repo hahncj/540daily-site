@@ -1,5 +1,6 @@
 // Environment for the Playwright test host. All values are test-only placeholders.
-export const E2E_PORT = 4173;
+// E2E_PORT lets two worktrees run browser tests at the same time.
+export const E2E_PORT = Number(process.env.E2E_PORT ?? 4173);
 export const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
 
 export const E2E_ENV = {

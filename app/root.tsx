@@ -22,8 +22,8 @@ import "./styles/app.css";
 export async function loader({ request, context }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
   const viewer = await getViewer(request, services);
-  // Signed-in theme preference is read here once reader preferences exist (lane 3B).
-  const theme: ThemeChoice = "system";
+  // A signed-in member's saved theme wins over anything stored locally on this device.
+  const theme: ThemeChoice = viewer ? await services.preferences.theme(viewer.userId) : "system";
   return { viewer, theme };
 }
 
@@ -33,7 +33,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const data = useRouteLoaderData<RootData>("root");
   const theme = data?.theme ?? "system";
   return (
-    <html lang="en" data-theme={theme === "system" ? undefined : theme} suppressHydrationWarning>
+    <html
+      lang="en"
+      data-theme={theme === "system" ? undefined : theme}
+      data-theme-source={data?.viewer ? "account" : undefined}
+      suppressHydrationWarning
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -106,7 +111,7 @@ function SiteHeader() {
           </ul>
         </nav>
         <div className="site-header__tools">
-          <ThemeToggle initial={data?.theme ?? "system"} />
+          <ThemeToggle initial={data?.theme ?? "system"} signedIn={!!viewer} />
           {viewer ? (
             <>
               <NavLink to="/account" className="account-link" aria-label="Account" title={viewer.email}>

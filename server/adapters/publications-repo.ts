@@ -1,7 +1,7 @@
 // Drizzle implementation of PublicationsRepository. Multi-statement writes go through atomic()
 // (one D1 batch or one SQLite transaction). Statements in a batch cannot read each other's results,
 // so later statements use subselects and are guarded by the new revision row's ID.
-import { and, desc, eq, inArray, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, exists, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   fromSnapshot,
   toSnapshot,
@@ -285,7 +285,7 @@ export function createPublicationsRepository(db: Database): PublicationsReposito
       return { items: await withTags(db, rows as ListRow[]), total: Number(count?.n ?? 0) };
     },
 
-    async latestPublishedPerCategory(categoryIds, perCategory) {
+    async latestPublishedPerCategory(categoryIds, perCategory, tagIds) {
       const out = new Map<string, ReturnType<typeof toListItem>[]>();
       if (categoryIds.length === 0) return out;
       const ranked = db
@@ -294,7 +294,20 @@ export function createPublicationsRepository(db: Database): PublicationsReposito
           rn: sql<number>`row_number() over (partition by ${publications.categoryId} order by ${publications.publishedAt} desc, ${publications.id} desc)`.as("rn"),
         })
         .from(publications)
-        .where(and(eq(publications.status, "published"), inArray(publications.categoryId, [...categoryIds])))
+        .where(
+          and(
+            eq(publications.status, "published"),
+            inArray(publications.categoryId, [...categoryIds]),
+            tagIds && tagIds.length > 0
+              ? exists(
+                  db
+                    .select({ one: sql`1` })
+                    .from(publicationTags)
+                    .where(and(eq(publicationTags.publicationId, publications.id), inArray(publicationTags.tagId, [...tagIds]))),
+                )
+              : undefined,
+          ),
+        )
         .as("ranked");
       const rows = await selectListRows(db)
         .innerJoin(ranked, eq(ranked.id, publications.id))
