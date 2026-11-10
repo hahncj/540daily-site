@@ -24,6 +24,12 @@ Stage 1 (Publishing core) notes for later lanes:
 - Render bodies with `publications.renderBody(publicationOrRevisionContent)`; never render Markdown another way.
 - Keyword search matches published items only (the FTS index holds nothing else), including for `search.agentSearch`; unfiltered agent browsing also lists the member's own unpublished items.
 
+Lane 2C (Editor workspace) notes:
+
+- Editor routes: `/editor` (list), `/editor/new`, `/editor/publications/:id` (edit, preview, publish/unpublish/restore visibility), `/editor/publications/:id/history`, `/editor/homepage`, and `POST /editor/attachments` (multipart image upload through the core ticket flow). Every loader and action starts with `requireEditorPage`/`requireEditorWrite` from `app/routes/editor.server.ts`.
+- Editor previews call `publications.renderBody` with the Markdown's own `attachment:ID` references.
+- Playwright signs members in with `signInAs()` from `tests/e2e/helpers/members.ts`, which writes a test member and session into the test host's `.e2e` SQLite file (Google is never contacted).
+
 ## Document authority (read before building)
 
 1. [docs/540daily/BUILD_PROMPT.md](docs/540daily/BUILD_PROMPT.md): entry point and build workflow. [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.
