@@ -2,6 +2,7 @@
 // and search through the UI (A10). Data comes from seed.setup.ts and is labeled test data.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { E2E_BASE_URL } from "./env";
 import { readSeed, type SeedInfo } from "./seed-info";
 
 let seed: SeedInfo;
@@ -173,5 +174,5 @@ test("public pages are indexable and private pages are not", async ({ request })
   }
   expect((await request.get("/sign-in")).headers()["x-robots-tag"]).toBe("noindex");
   const robots = await (await request.get("/robots.txt")).text();
-  expect(robots).toContain("Sitemap: http://localhost:4173/sitemap.xml");
+  expect(robots).toContain(`Sitemap: ${E2E_BASE_URL}/sitemap.xml`);
 });

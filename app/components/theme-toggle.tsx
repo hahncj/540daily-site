@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import { useFetcher } from "react-router";
+import "../styles/reader.css";
+import type { ThemeChoice } from "../../server/core/preferences";
 
-export type ThemeChoice = "system" | "light" | "dark";
+export type { ThemeChoice };
 export const THEME_STORAGE_KEY = "540daily.theme";
 
 function readStoredTheme(): ThemeChoice | null {
@@ -18,20 +21,26 @@ function applyTheme(theme: ThemeChoice) {
 }
 
 /**
- * Theme switcher. Anonymous visitors keep their choice in localStorage. Saving the choice to a
- * signed-in member's account arrives with reader preferences (lane 3B).
+ * Theme switcher. Anonymous visitors keep their choice in localStorage on this device. A signed-in
+ * member's choice is saved to their account (through the dashboard action), so it follows them across
+ * devices. Switching the theme is never a content-edit permission.
  */
-export function ThemeToggle({ initial }: { initial: ThemeChoice }) {
+export function ThemeToggle({ initial, signedIn }: { initial: ThemeChoice; signedIn: boolean }) {
   const [theme, setTheme] = useState<ThemeChoice>(initial);
+  const fetcher = useFetcher<{ ok: boolean; message?: string }>();
 
   useEffect(() => {
-    const stored = readStoredTheme();
-    if (stored) setTheme(stored);
-  }, []);
+    if (signedIn) setTheme(initial);
+    else setTheme(readStoredTheme() ?? "system");
+  }, [initial, signedIn]);
 
   function choose(next: ThemeChoice) {
     setTheme(next);
     applyTheme(next);
+    if (signedIn) {
+      fetcher.submit({ intent: "theme", theme: next }, { method: "post", action: "/dashboard" });
+      return;
+    }
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
@@ -39,17 +48,32 @@ export function ThemeToggle({ initial }: { initial: ThemeChoice }) {
     }
   }
 
+  const failed = signedIn && fetcher.state === "idle" && fetcher.data && !fetcher.data.ok;
+
   return (
-    <label className="theme-toggle">
-      <span className="visually-hidden">Color theme</span>
-      <select className="button" value={theme} onChange={(e) => choose(e.currentTarget.value as ThemeChoice)}>
-        <option value="system">Theme: device</option>
-        <option value="light">Theme: light</option>
-        <option value="dark">Theme: dark</option>
-      </select>
-    </label>
+    <span className="theme-toggle">
+      <label>
+        <span className="visually-hidden">Color theme</span>
+        <select className="button" value={theme} onChange={(e) => choose(e.currentTarget.value as ThemeChoice)}>
+          <option value="system">Theme: device</option>
+          <option value="light">Theme: light</option>
+          <option value="dark">Theme: dark</option>
+        </select>
+      </label>
+      {failed ? (
+        <span className="theme-toggle__error" role="alert">
+          Theme not saved.{" "}
+          <button type="button" className="link-button" onClick={() => choose(theme)}>
+            Retry
+          </button>
+        </span>
+      ) : null}
+    </span>
   );
 }
 
-/** Inline script that applies a stored anonymous theme before first paint, to avoid a flash. */
-export const themeBootScript = `try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}else if(t==="system"){document.documentElement.removeAttribute("data-theme")}}catch(e){}`;
+/**
+ * Inline script that applies a stored anonymous theme before first paint, to avoid a flash.
+ * Skipped when the server rendered a signed-in member's saved theme (`data-theme-source="account"`).
+ */
+export const themeBootScript = `try{var d=document.documentElement;if(d.getAttribute("data-theme-source")!=="account"){var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(t==="light"||t==="dark"){d.setAttribute("data-theme",t)}else if(t==="system"){d.removeAttribute("data-theme")}}}catch(e){}`;

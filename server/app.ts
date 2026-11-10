@@ -8,6 +8,7 @@ import { createCategoriesRepository, createTagsRepository } from "./adapters/cat
 import { createMarkdownRenderer } from "./adapters/markdown";
 import { createMembersRepository } from "./adapters/members-repo";
 import { createPublicationsRepository } from "./adapters/publications-repo";
+import { createBookmarksRepository, createPreferencesRepository } from "./adapters/reader-repo";
 import { createSearchRepository } from "./adapters/search-repo";
 import { createAgents, type Agents } from "./agent-auth";
 import { createApiKeys, type ApiKeys } from "./api-keys";
@@ -16,15 +17,16 @@ import { AUTH_BASE_PATH, createAuth, MCP_PATH, type Auth, type GoogleTestOverrid
 import type { AppConfig } from "./config";
 import { createAttachments, type Attachments } from "./core/attachments";
 import { createAudit, type Audit } from "./core/audit";
+import { createBookmarks, type Bookmarks } from "./core/bookmarks";
 import { createCategories, createHomepage, createTags, type Categories, type Homepage, type Tags } from "./core/categories";
 import type { MarkdownRenderer } from "./core/markdown";
 import { createMembers, type Members } from "./core/members";
+import { createPreferences, type Preferences } from "./core/preferences";
 import { createPublications, type Publications } from "./core/publications";
 import { createPublishingFailures, type PublishingFailures } from "./core/publishing-failures";
 import { createSearch, type Search } from "./core/search";
 import { ATTACHMENTS_PREFIX, serveAttachment } from "./media-routes";
 import { handleMcp } from "./mcp/endpoint";
-import { planned, type PlannedService } from "./planned";
 import { createRateLimits, type RateLimits } from "./rate-limits";
 
 /**
@@ -58,8 +60,8 @@ export interface Services {
   agents: Agents;
   rateLimits: RateLimits;
   // Lane 3B: reader features
-  preferences: PlannedService<"preferences">;
-  bookmarks: PlannedService<"bookmarks">;
+  preferences: Preferences;
+  bookmarks: Bookmarks;
 }
 
 export interface HostDeps {
@@ -91,6 +93,7 @@ export function createServices(deps: HostDeps): Services {
   const markdown = createMarkdownRenderer();
   const attachments = createAttachments({ repo: createAttachmentsRepository(deps.db), storage: deps.media, audit, now, newId });
   const categoriesRepo = createCategoriesRepository(deps.db);
+  const tagsRepo = createTagsRepository(deps.db);
   const publications = createPublications({
     repo: createPublicationsRepository(deps.db),
     attachments,
@@ -111,7 +114,7 @@ export function createServices(deps: HostDeps): Services {
     members,
     publications,
     categories: createCategories({ repo: categoriesRepo }),
-    tags: createTags({ repo: createTagsRepository(deps.db) }),
+    tags: createTags({ repo: tagsRepo }),
     homepage: createHomepage({ repo: categoriesRepo, audit, now }),
     search: createSearch({ repo: createSearchRepository(deps.db) }),
     attachments,
@@ -121,8 +124,12 @@ export function createServices(deps: HostDeps): Services {
     apiKeys: createApiKeys({ db: deps.db, audit, now, newId }),
     agents: createAgents({ db: deps.db, audit, now }),
     rateLimits: createRateLimits({ db: deps.db, config: deps.config, now }),
-    preferences: planned("preferences", "lane 3B"),
-    bookmarks: planned("bookmarks", "lane 3B"),
+    preferences: createPreferences({
+      repo: createPreferencesRepository(deps.db),
+      lookups: { categoriesByIds: (ids) => categoriesRepo.getByIds(ids), tagsByIds: (ids) => tagsRepo.getByIds(ids) },
+      now,
+    }),
+    bookmarks: createBookmarks({ repo: createBookmarksRepository(deps.db), now }),
   };
 }
 

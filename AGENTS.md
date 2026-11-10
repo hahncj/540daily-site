@@ -45,6 +45,13 @@ Lane 3A (Account and owner console) notes:
 - Member management is in `services.members`: `invite`, `listInvitations`, `revokeInvitation`, `listMembers`, `changeRole`, `setStatus`. All are owner-only and return `Result`. The sole active owner cannot be demoted or disabled (one guarded SQL statement in `members-repo.ts`); owners cannot disable themselves. Disabling deletes the member's sessions.
 - The `services.invitations` placeholder was removed; invitations live in `services.members`.
 
+Lane 3B (Reader features) notes:
+
+- `services.preferences` (dashboard panels, interest tags, theme) and `services.bookmarks` take the signed-in member's own `userId`; never pass an ID from a form. The first `/dashboard` visit copies the public homepage layout (`seedFromHomepage`); later public changes never overwrite it.
+- Save buttons: `PublicationList` takes `savedIds` (from `savedIdsFor()` in `app/reader.server.ts`; null when signed out hides the buttons). `BookmarkButton` posts to the `/saved` action; the header theme switcher posts `intent=theme` to the `/dashboard` action. Both use `readerWrite()` so a refused write shows inline instead of the error page.
+- Bookmarks of unpublished or draft items list as `{ kind: "unavailable" }` with no title or content.
+- Playwright: `signInExisting()` adds a second session for a member (another device). Set `E2E_PORT` to run browser tests in two worktrees at once (default 4173).
+
 ## Document authority (read before building)
 
 1. [docs/540daily/BUILD_PROMPT.md](docs/540daily/BUILD_PROMPT.md): entry point and build workflow. [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.

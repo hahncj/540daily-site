@@ -1,0 +1,115 @@
+/* ---- Reader features (lane 3B): bookmarks and the personal dashboard ---- */
+
+.bookmark {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.bookmark__button {
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.9rem;
+}
+.bookmark__button[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.bookmark__error {
+  color: var(--color-danger);
+  font-size: 0.9rem;
+}
+
+.publication__actions {
+  margin-top: var(--space-3);
+}
+
+.saved-list__unavailable .publication-item__title {
+  color: var(--color-text-muted);
+}
+
+.notice--success {
+  border-left-color: var(--color-success);
+}
+
+.dashboard-settings {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.dashboard-settings h3 {
+  margin-top: var(--space-6);
+}
+.dashboard-settings__reset {
+  margin-top: var(--space-3);
+}
+
+.dashboard-settings .layout-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.dashboard-settings .layout-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.dashboard-settings .layout-item__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dashboard-settings .layout-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.interest-form fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+.interest-list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+.interest-list label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.25rem;
+  cursor: pointer;
+}
+.interest-list input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.theme-toggle__error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  margin-left: var(--space-2);
+}
+.link-button {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
