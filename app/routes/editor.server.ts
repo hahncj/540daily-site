@@ -109,7 +109,9 @@ export function valuesFromPublication(p: Publication): PublicationFormValues {
 export function formErrors(errors: FieldErrors | undefined): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const [path, messages] of Object.entries(errors ?? {})) {
-    const [field = "_", index] = path.split(".");
+    const [raw = "_", index] = path.split(".");
+    // Attachments come from the body's references, so their errors belong to the body field.
+    const field = raw === "attachmentIds" ? "bodyMarkdown" : raw;
     const prefix = index !== undefined && /^\d+$/.test(index) ? `${field === "sources" ? "Source" : "Tag"} ${Number(index) + 1}: ` : "";
     (out[field] ??= []).push(...messages.map((m) => prefix + m));
   }

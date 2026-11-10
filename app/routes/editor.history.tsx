@@ -1,3 +1,4 @@
+import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { fail } from "../../server/core/result";
 import { EditorNav, ErrorNotice, Flash, StatusBadge, Time, editorLinks, NOINDEX_META } from "../components/editor/shared";
@@ -6,6 +7,10 @@ import type { Route } from "./+types/editor.history";
 import { failure, positiveInt, requireEditorPage, requireEditorWrite } from "./editor.server";
 
 export const links = editorLinks;
+
+/** Reload after every action, including a refused stale one, so the page shows the latest state. */
+export const shouldRevalidate = ({ actionStatus, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) =>
+  actionStatus !== undefined ? true : defaultShouldRevalidate;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `History${loaderData ? `: ${loaderData.publication.title}` : ""} · Editor · 540 Daily` }, NOINDEX_META];
@@ -134,8 +139,8 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
               <>
                 <h4>Sources</h4>
                 <ul>
-                  {selected.content.sources.map((s) => (
-                    <li key={s.url}>
+                  {selected.content.sources.map((s, i) => (
+                    <li key={i}>
                       <a href={s.url} rel="nofollow noopener noreferrer ugc">
                         {s.label || s.url}
                       </a>

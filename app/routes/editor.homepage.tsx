@@ -1,3 +1,4 @@
+import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect, useRef } from "react";
 import { Form, data, useNavigation } from "react-router";
 import { moveCategory } from "../../server/core/categories";
@@ -8,6 +9,10 @@ import type { Route } from "./+types/editor.homepage";
 import { requireEditorPage, requireEditorWrite } from "./editor.server";
 
 export const links = editorLinks;
+
+/** Reload after every action, including a refused stale one, so the page shows the latest state. */
+export const shouldRevalidate = ({ actionStatus, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) =>
+  actionStatus !== undefined ? true : defaultShouldRevalidate;
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "Homepage layout · Editor · 540 Daily" }, NOINDEX_META];
@@ -36,7 +41,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   const seen = String(form.get("order") ?? "");
   if (!INTENTS.includes(intent) || !categoryId) return data({ ok: false as const, message: "Unknown change.", focus: null }, { status: 400 });
 
-  const current = (await services.homepage.layout()).map((c) => c.id);
+  const currentLayout = await services.homepage.layout();
+  const current = currentLayout.map((c) => c.id);
   // Changes apply to the layout the editor saw. If another editor changed it meanwhile, show the new one.
   if (current.join(",") !== seen) {
     return data({ ok: false as const, message: "The homepage layout changed since this page loaded. The latest layout is shown; try again.", focus: null }, { status: 409 });
@@ -48,7 +54,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const result = await services.homepage.setLayout(actor, next);
   if (!result.ok) return data({ ok: false as const, message: result.message, focus: null }, { status: HTTP_STATUS[result.status] });
-  const name = result.value.find((c) => c.id === categoryId)?.name ?? (await services.categories.listAll()).find((c) => c.id === categoryId)?.name ?? "Category";
+  const name = [...result.value, ...currentLayout].find((c) => c.id === categoryId)?.name ?? "Category";
   const position = next.indexOf(categoryId) + 1;
   const message =
     intent === "remove"

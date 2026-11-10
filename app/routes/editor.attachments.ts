@@ -19,7 +19,9 @@ export async function loader() {
 export async function action({ request, context }: Route.ActionArgs) {
   const services = context.get(servicesContext);
   const actor = await requireEditorWrite(request, services);
-  const declared = Number(request.headers.get("Content-Length") ?? "0");
+  // Browsers always send a length for form uploads; without one the body could be any size.
+  const declared = Number(request.headers.get("Content-Length") ?? "NaN");
+  if (!Number.isFinite(declared)) return data({ ok: false as const, message: "The upload has no length. Try again from the editor page." }, { status: 411 });
   if (declared > MAX_REQUEST_BYTES) return data({ ok: false as const, message: "Images can be at most 10 MiB." }, { status: 413 });
 
   let form: FormData;

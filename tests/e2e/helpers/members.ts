@@ -5,10 +5,11 @@ import { randomUUID } from "node:crypto";
 import type { BrowserContext } from "@playwright/test";
 import Database from "better-sqlite3";
 import { serializeSignedCookie } from "better-call";
+import config from "../../../playwright.config";
 
 const DB_PATH = ".e2e/540daily.db";
-// Must match BETTER_AUTH_SECRET in playwright.config.ts (a test-only value).
-const AUTH_SECRET = "e2e-test-secret-e2e-test-secret-1234";
+// The test host's BETTER_AUTH_SECRET (a test-only value), read from the Playwright config.
+const AUTH_SECRET = (config.webServer as { env: Record<string, string> }).env.BETTER_AUTH_SECRET!;
 const SESSION_COOKIE = "better-auth.session_token";
 
 export type TestRole = "reader" | "editor" | "owner";

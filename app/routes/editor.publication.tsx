@@ -1,3 +1,4 @@
+import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { attribution, publicationPath } from "../../server/core/publications";
 import { fail } from "../../server/core/result";
@@ -18,6 +19,10 @@ import {
 } from "./editor.server";
 
 export const links = editorLinks;
+
+/** Reload after every action, including refused ones, so the facts and revision shown are current. */
+export const shouldRevalidate = ({ actionStatus, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) =>
+  actionStatus !== undefined ? true : defaultShouldRevalidate;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `${loaderData ? `Edit: ${loaderData.publication.title}` : "Edit publication"} · Editor · 540 Daily` }, NOINDEX_META];
@@ -78,7 +83,10 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     return { ok: true as const, intent, values, expectedRevision, preview: await renderPreview(services, values.bodyMarkdown) };
   }
   if (!expectedRevision) return failure(fail("invalid", "The form is missing its revision. Reload the page."), { intent, values, preview: null, expectedRevision });
-  const saved = await services.publications.update(actor, id, { expectedRevision, ...toPublicationInput(values) });
+  const input: Record<string, unknown> = toPublicationInput(values);
+  // The date field cannot hold a source time; leave the stored value alone unless the editor changed the date.
+  if (values.sourcePublishedAt === String(form.get("sourcePublishedAtShown") ?? "")) delete input.sourcePublishedAt;
+  const saved = await services.publications.update(actor, id, { expectedRevision, ...input });
   if (!saved.ok) return failure(saved, { intent, values, preview: null, expectedRevision });
   if (intent === "save-publish" && saved.value.status === "draft") {
     const published = await services.publications.publish(actor, id, saved.value.revision);

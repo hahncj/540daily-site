@@ -97,6 +97,7 @@ export function PublicationForm({
   return (
     <Form method="post" className="publication-form" aria-label={mode === "new" ? "New publication" : "Edit publication"}>
       {expectedRevision ? <input type="hidden" name="expectedRevision" value={expectedRevision} /> : null}
+      {mode === "edit" ? <input type="hidden" name="sourcePublishedAtShown" value={values.sourcePublishedAt} /> : null}
       <FieldError id="form-error" errors={general} />
 
       <fieldset className="field">
@@ -144,24 +145,7 @@ export function PublicationForm({
       />
       <TextField name="tags" label="Tags" values={values} errors={errors} hint="Separate tags with commas. Up to 20." />
       <TextField name="sources" label="Sources" values={values} errors={errors} multiline rows={3} hint="One per line: the http(s) link, then an optional label. Links are not fetched." />
-      <TextField name="sourcePublishedAt" label="Source date" values={values} errors={errors} type="date" hint="When the source was published. Separate from the 540 Daily publication time." />
-
-      {conflictRevision && historyHref ? (
-        <div className="notice notice--error" role="alert">
-          <p>
-            Someone saved revision {conflictRevision} while you were editing. Your text is still here and nothing was saved. Their version stays in the history either way.
-          </p>
-          <p>
-            <a href={historyHref} target="_blank" rel="noopener">
-              Open the history in a new tab
-            </a>{" "}
-            to compare, or save your version on top of theirs.
-          </p>
-          <button type="submit" className="button" name="overrideRevision" value={conflictRevision} disabled={busy}>
-            Save my version as revision {conflictRevision + 1}
-          </button>
-        </div>
-      ) : null}
+      <TextField name="sourcePublishedAt" label="Source date" values={values} errors={errors} type="date" hint="When the source was published. Separate from the 540 Daily publication time. A time the agent sent is kept unless you change the date." />
 
       <div className="form-actions">
         <button type="submit" className="button" name="intent" value="preview" disabled={busy}>
@@ -192,6 +176,23 @@ export function PublicationForm({
           {busy ? "Working…" : ""}
         </span>
       </div>
+
+      {conflictRevision && historyHref ? (
+        <div className="notice notice--error" role="alert">
+          <p>
+            Someone saved revision {conflictRevision} while you were editing. Your text is still here and nothing was saved. Their version stays in the history either way.
+          </p>
+          <p>
+            <a href={historyHref} target="_blank" rel="noopener">
+              Open the history in a new tab
+            </a>{" "}
+            to compare, or save your version on top of theirs.
+          </p>
+          <button type="submit" className="button" name="overrideRevision" value={conflictRevision} disabled={busy}>
+            Save my version as revision {conflictRevision + 1}
+          </button>
+        </div>
+      ) : null}
 
       {previewHtml !== undefined && previewHtml !== null ? (
         <section className="preview panel" aria-labelledby="preview-title">

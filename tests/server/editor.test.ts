@@ -41,6 +41,17 @@ function post(path: string, cookie: string | null, fields: Fields | FormData, or
   return new Request(`${BASE_URL}${path}`, { method: "POST", headers, body });
 }
 
+/** A multipart request as a browser sends it, with Content-Length. */
+async function uploadPost(cookie: string, form: FormData) {
+  const draft = new Request(`${BASE_URL}/editor/attachments`, { method: "POST", body: form });
+  const bytes = await draft.arrayBuffer();
+  return new Request(`${BASE_URL}/editor/attachments`, {
+    method: "POST",
+    headers: { Origin: BASE_URL, Cookie: cookie, "Content-Type": draft.headers.get("Content-Type")!, "Content-Length": String(bytes.byteLength) },
+    body: bytes,
+  });
+}
+
 const location = (r: { response?: Response }) => r.response?.headers.get("Location") ?? null;
 const idFrom = (loc: string | null) => decodeURIComponent(/\/editor\/publications\/([^?/]+)/.exec(loc ?? "")?.[1] ?? "");
 
@@ -338,7 +349,7 @@ describe("preview and uploads", () => {
 
   it("uploads an image and returns the Markdown to use", async () => {
     const { services, editor, actor } = await setup();
-    const r = await run(attachmentsRoute.action, services, post("/editor/attachments", editor.cookie, uploadForm(PNG_BYTES, "image/png", "Test [chart]")));
+    const r = await run(attachmentsRoute.action, services, await uploadPost(editor.cookie, uploadForm(PNG_BYTES, "image/png", "Test [chart]")));
     expect(r.status).toBe(200);
     const d = r.data as { ok: true; attachment: { id: string }; markdown: string };
     expect(d.markdown).toBe(`![Test \\[chart\\]](attachment:${d.attachment.id})`);
@@ -352,16 +363,50 @@ describe("preview and uploads", () => {
 
   it("trusts the file's bytes, not its name or declared type", async () => {
     const { services, editor } = await setup();
-    const svg = await run(attachmentsRoute.action, services, post("/editor/attachments", editor.cookie, uploadForm(SVG_BYTES, "image/png", "Test", "chart.png")));
+    const svg = await run(attachmentsRoute.action, services, await uploadPost(editor.cookie, uploadForm(SVG_BYTES, "image/png", "Test", "chart.png")));
     expect(svg.status).toBe(422);
     expect(svg.data).toMatchObject({ ok: false });
-    const declaredSvg = await run(attachmentsRoute.action, services, post("/editor/attachments", editor.cookie, uploadForm(SVG_BYTES, "image/svg+xml", "Test", "chart.svg")));
+    const declaredSvg = await run(attachmentsRoute.action, services, await uploadPost(editor.cookie, uploadForm(SVG_BYTES, "image/svg+xml", "Test", "chart.svg")));
     expect(declaredSvg.status).toBe(422);
     expect(declaredSvg.data).toMatchObject({ message: "Only PNG, JPEG, and WebP images are accepted." });
-    const noAlt = await run(attachmentsRoute.action, services, post("/editor/attachments", editor.cookie, uploadForm(PNG_BYTES, "image/png", "  ")));
+    const noAlt = await run(attachmentsRoute.action, services, await uploadPost(editor.cookie, uploadForm(PNG_BYTES, "image/png", "  ")));
     expect(noAlt.status).toBe(422);
-    const big = await run(attachmentsRoute.action, services, post("/editor/attachments", editor.cookie, uploadForm(new Uint8Array(10 * 1024 * 1024 + 1), "image/png")));
+    const big = await run(attachmentsRoute.action, services, await uploadPost(editor.cookie, uploadForm(new Uint8Array(10 * 1024 * 1024 + 1), "image/png")));
     expect(big.status).toBe(413);
+    const noLength = await run(attachmentsRoute.action, services, post("/editor/attachments", editor.cookie, uploadForm(PNG_BYTES, "image/png")));
+    expect(noLength.status).toBe(411);
     expect(services.media.objects.size).toBe(0);
+  });
+});
+
+describe("editor saves keep what the form cannot show", () => {
+  it("keeps an agent's precise source time when the editor does not change the date", async () => {
+    const { services, editor } = await setup();
+    const agent = agentFor({ userId: editor.userId, role: "editor" });
+    const created = await services.publications.create(agent, storyInput({ sourcePublishedAt: "2026-11-01T23:30:00-06:00" }));
+    if (!created.ok) throw new Error(created.message);
+    const id = created.value.publication.id;
+    const page = await run(publicationRoute.loader as never, services, get(`/editor/publications/${id}`, editor.cookie), { id });
+    const shown = (page.data as { values: Fields }).values;
+    expect(shown.sourcePublishedAt).toBe("2026-11-02");
+
+    await edit(services, editor.cookie, id, { ...shown, title: "Test title fixed by editor", sourcePublishedAtShown: shown.sourcePublishedAt!, expectedRevision: "1", intent: "save" });
+    expect((await services.publications.getPublic(id))?.sourcePublishedAt?.toISOString()).toBe("2026-11-02T05:30:00.000Z");
+
+    await edit(services, editor.cookie, id, { ...shown, sourcePublishedAt: "2026-10-30", sourcePublishedAtShown: shown.sourcePublishedAt!, expectedRevision: "2", intent: "save" });
+    expect((await services.publications.getPublic(id))?.sourcePublishedAt?.toISOString()).toBe("2026-10-30T00:00:00.000Z");
+  });
+
+  it("shows attachment problems under the body field", async () => {
+    const { services, editor } = await setup();
+    const r = await run(newRoute.action, services, post("/editor/new", editor.cookie, { ...FORM, bodyMarkdown: "![x](attachment:not-a-real-upload)", intent: "save" }));
+    expect(r.status).toBe(422);
+    expect((r.data as { errors: Record<string, string[]> }).errors.bodyMarkdown?.[0]).toMatch(/not-a-real-upload/);
+  });
+
+  it("reloads page data after refused actions so stale pages refresh", () => {
+    for (const route of [publicationRoute, historyRoute, homepageRoute]) {
+      expect(route.shouldRevalidate({ actionStatus: 409, defaultShouldRevalidate: false } as never)).toBe(true);
+    }
   });
 });
