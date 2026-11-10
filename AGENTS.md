@@ -24,6 +24,15 @@ Stage 1 (Publishing core) notes for later lanes:
 - Render bodies with `publications.renderBody(publicationOrRevisionContent)`; never render Markdown another way.
 - Keyword search matches published items only (the FTS index holds nothing else), including for `search.agentSearch`; unfiltered agent browsing also lists the member's own unpublished items.
 
+Stage 2A (Agent interfaces) notes for later lanes:
+
+- `/mcp` (`server/mcp/`) and `/api/v1/*` (`server/api-v1.ts`) both run operations through `runOperation` in `server/integration.ts`, so MCP `structuredContent` and HTTP bodies are identical. Add a new agent operation there, not in either protocol file.
+- `authenticateAgent` (`server/agent-auth.ts`) re-reads the member, key, and connection on every call. API keys look like `540daily_<43 chars>`; only a SHA-256 hash is stored.
+- For lane 3A: `services.apiKeys.create/listOwn/listAll/revoke` and `services.agents.listOwnConnections/listAllConnections/disconnect` take a viewer and enforce own-or-owner rules.
+- Upload URL is `PUT /api/v1/uploads/:token` (handled in `server/media-routes.ts`); status is `GET /api/v1/attachments/:id`.
+- Rate limits (`server/rate-limits.ts`) use the `rate_limit_counters` table: one-minute windows per member.
+- Tests: `tests/helpers/agents.ts` has `memberWithKey`, `callTool`, `api`, and `connectAgent` (full OAuth flow in-process). A disconnect refuses tokens issued in the same second (JWT `iat` resolution), so tests wait a second before reconnecting.
+
 ## Document authority (read before building)
 
 1. [docs/540daily/BUILD_PROMPT.md](docs/540daily/BUILD_PROMPT.md): entry point and build workflow. [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.
