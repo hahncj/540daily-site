@@ -19,6 +19,7 @@ import { createMembers, type Members } from "./core/members";
 import { createPublications, type Publications } from "./core/publications";
 import { createPublishingFailures, type PublishingFailures } from "./core/publishing-failures";
 import { createSearch, type Search } from "./core/search";
+import { ATTACHMENTS_PREFIX, serveAttachment } from "./media-routes";
 import { planned, type PlannedService } from "./planned";
 
 /**
@@ -146,9 +147,8 @@ export async function handleRequest(request: Request, services: Services, render
     response = notYetAvailable("The MCP endpoint is built in lane 2A.");
   } else if (path === "/api/v1" || path.startsWith("/api/v1/")) {
     response = notYetAvailable("The HTTP API is built in lane 2A.");
-  } else if ((request.method === "GET" || request.method === "HEAD") && path.startsWith("/attachments/")) {
-    // Attachment serving with a visibility check is built in Stage 1 / lane 2B. Nothing is public yet.
-    response = Response.json({ status: "not_found", message: "Not found." }, { status: 404, headers: NO_STORE });
+  } else if ((request.method === "GET" || request.method === "HEAD") && path.startsWith(ATTACHMENTS_PREFIX)) {
+    response = await serveAttachment(request, services);
   } else {
     response = await renderPage(request, services);
   }

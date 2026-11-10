@@ -1,7 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-
-const PORT = 4173;
-const BASE_URL = `http://localhost:${PORT}`;
+import { E2E_BASE_URL as BASE_URL, E2E_ENV } from "./tests/e2e/env";
 
 // Browser tests run against the Node build (BUILD_TARGET=node) with a throwaway SQLite file in .e2e/.
 // All values below are test-only placeholders.
@@ -25,15 +23,6 @@ export default defineConfig({
     url: `${BASE_URL}/health`,
     reuseExistingServer: false,
     timeout: 180_000,
-    env: {
-      PORT: String(PORT),
-      PUBLIC_BASE_URL: BASE_URL,
-      OWNER_EMAIL: "owner@example.test",
-      BETTER_AUTH_SECRET: "e2e-test-secret-e2e-test-secret-1234",
-      GOOGLE_CLIENT_ID: "e2e-test-google-client-id",
-      GOOGLE_CLIENT_SECRET: "e2e-test-google-client-secret",
-      DATABASE_PATH: ".e2e/540daily.db",
-      MEDIA_DIR: ".e2e/media",
-    },
+    env: E2E_ENV,
   },
 });
