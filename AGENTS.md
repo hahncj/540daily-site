@@ -39,6 +39,12 @@ Lane 2C (Editor workspace) notes:
 - Editor previews call `publications.renderBody` with the Markdown's own `attachment:ID` references.
 - Playwright signs members in with `signInAs()` from `tests/e2e/helpers/members.ts`, which writes a test member and session into the test host's `.e2e` SQLite file (Google is never contacted).
 
+Lane 3A (Account and owner console) notes:
+
+- `/account` (own MCP connections; API keys for editors and the owner) and `/owner` (invitations, roles, status, every member's credentials, publishing failures, upload cleanup). Shared pieces are in `app/components/account/shared.tsx`.
+- Member management is in `services.members`: `invite`, `listInvitations`, `revokeInvitation`, `listMembers`, `changeRole`, `setStatus`. All are owner-only and return `Result`. The sole active owner cannot be demoted or disabled (one guarded SQL statement in `members-repo.ts`); owners cannot disable themselves. Disabling deletes the member's sessions.
+- The `services.invitations` placeholder was removed; invitations live in `services.members`.
+
 ## Document authority (read before building)
 
 1. [docs/540daily/BUILD_PROMPT.md](docs/540daily/BUILD_PROMPT.md): entry point and build workflow. [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.

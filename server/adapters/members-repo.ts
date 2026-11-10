@@ -1,7 +1,7 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
-import type { MemberRecord, MembersRepository } from "../core/members";
-import { invitations, memberships, user } from "../db/schema";
-import { atomic } from "./atomic";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import type { MemberListItem, MemberRecord, MembersRepository } from "../core/members";
+import { invitations, memberships, session, user } from "../db/schema";
+import { atomic, changesOf } from "./atomic";
 import type { Database } from "./db";
 
 const memberColumns = {
@@ -65,6 +65,66 @@ export function createMembersRepository(db: Database): MembersRepository {
         .onConflictDoNothing()
         .returning({ id: invitations.id });
       return inserted.length > 0 ? "created" : "duplicate";
+    },
+
+    async listMembers(limit) {
+      const rows = await db
+        .select({ ...memberColumns, createdAt: memberships.createdAt, disabledAt: memberships.disabledAt })
+        .from(memberships)
+        .innerJoin(user, eq(user.id, memberships.userId))
+        .orderBy(asc(memberships.createdAt), asc(user.email))
+        .limit(limit);
+      return rows as MemberListItem[];
+    },
+
+    async listOpenInvitations(limit) {
+      return db
+        .select({ id: invitations.id, email: invitations.email, role: invitations.role, createdAt: invitations.createdAt })
+        .from(invitations)
+        .where(and(isNull(invitations.acceptedAt), isNull(invitations.revokedAt)))
+        .orderBy(desc(invitations.createdAt))
+        .limit(limit);
+    },
+
+    async revokeInvitation(id, now) {
+      const rows = await db
+        .update(invitations)
+        .set({ revokedAt: now })
+        .where(and(eq(invitations.id, id), isNull(invitations.acceptedAt), isNull(invitations.revokedAt)))
+        .returning({ id: invitations.id });
+      return rows.length > 0;
+    },
+
+    async updateMember({ userId, role, status, keepActiveOwner, now }) {
+      const changes: Partial<typeof memberships.$inferInsert> = { updatedAt: now };
+      if (role) changes.role = role;
+      if (status) {
+        changes.status = status;
+        changes.disabledAt = status === "disabled" ? now : null;
+      }
+      // One statement, so two concurrent changes cannot both remove "the other" owner.
+      const anotherActiveOwner = sql`exists (select 1 from ${memberships} as other where other.role = 'owner' and other.status = 'active' and other.user_id <> ${userId})`;
+      const where = keepActiveOwner ? and(eq(memberships.userId, userId), anotherActiveOwner) : eq(memberships.userId, userId);
+      const [updated] = await atomic(db, [
+        () => db.update(memberships).set(changes).where(where),
+        // Disabling ends every session at once (the membership check on each request is the main guard).
+        ...(status === "disabled"
+          ? [
+              () =>
+                db
+                  .delete(session)
+                  .where(
+                    and(
+                      eq(session.userId, userId),
+                      sql`exists (select 1 from ${memberships} where ${memberships.userId} = ${userId} and ${memberships.status} = 'disabled')`,
+                    ),
+                  ),
+            ]
+          : []),
+      ]);
+      if (changesOf(updated) > 0) return "updated";
+      const [exists] = await db.select({ userId: memberships.userId }).from(memberships).where(eq(memberships.userId, userId)).limit(1);
+      return exists ? "last_owner" : "not_found";
     },
   };
 }
