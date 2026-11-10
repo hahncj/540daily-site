@@ -57,8 +57,6 @@ export interface Services {
   apiKeys: ApiKeys;
   agents: Agents;
   rateLimits: RateLimits;
-  // Lane 3A: owner console
-  invitations: PlannedService<"invitations">;
   // Lane 3B: reader features
   preferences: PlannedService<"preferences">;
   bookmarks: PlannedService<"bookmarks">;
@@ -79,7 +77,8 @@ export interface HostDeps {
 export function createServices(deps: HostDeps): Services {
   const now = deps.now ?? (() => new Date());
   const newId = deps.newId ?? (() => crypto.randomUUID());
-  const members = createMembers({ repo: createMembersRepository(deps.db), ownerEmail: deps.config.ownerEmail, now, newId });
+  const audit = createAudit({ repo: createAuditRepository(deps.db), now, newId });
+  const members = createMembers({ repo: createMembersRepository(deps.db), audit, ownerEmail: deps.config.ownerEmail, now, newId });
   const auth = createAuth({
     config: deps.config,
     db: deps.db,
@@ -88,7 +87,6 @@ export function createServices(deps: HostDeps): Services {
     googleTestOverrides: deps.googleTestOverrides,
   });
 
-  const audit = createAudit({ repo: createAuditRepository(deps.db), now, newId });
   const publishingFailures = createPublishingFailures({ repo: createPublishingFailuresRepository(deps.db), now, newId });
   const markdown = createMarkdownRenderer();
   const attachments = createAttachments({ repo: createAttachmentsRepository(deps.db), storage: deps.media, audit, now, newId });
@@ -123,7 +121,6 @@ export function createServices(deps: HostDeps): Services {
     apiKeys: createApiKeys({ db: deps.db, audit, now, newId }),
     agents: createAgents({ db: deps.db, audit, now }),
     rateLimits: createRateLimits({ db: deps.db, config: deps.config, now }),
-    invitations: planned("invitations", "lane 3A"),
     preferences: planned("preferences", "lane 3B"),
     bookmarks: planned("bookmarks", "lane 3B"),
   };

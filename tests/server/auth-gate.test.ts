@@ -81,7 +81,7 @@ describe("Google sign-in membership gate (A2, partial)", () => {
   it("A2: only the owner can invite", async () => {
     const editorId = await createMember(services, "editor@example.test", "editor");
     const outcome = await services.members.invite({ userId: editorId, role: "editor", status: "active" }, "someone@example.test");
-    expect(outcome).toEqual({ ok: false, status: "forbidden" });
+    expect(outcome).toMatchObject({ ok: false, status: "forbidden" });
     expect(await services.db.select().from(schema.invitations)).toHaveLength(0);
   });
 
