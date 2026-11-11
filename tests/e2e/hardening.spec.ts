@@ -31,7 +31,7 @@ async function tabTo(page: Page, target: Locator, browserName: string, max = 60)
   throw new Error(`Could not reach ${target} with the keyboard in ${max} presses.`);
 }
 
-/** A visible focus indicator: the :focus-visible outline from app.css. */
+/** A visible focus indicator: the :focus-visible outline from app.css (or the theme card's outline). */
 async function expectVisibleFocus(target: Locator) {
   const outline = await target.evaluate((el) => {
     const s = getComputedStyle(el);
@@ -153,15 +153,20 @@ test.describe("A12: an explicit theme overrides the device theme", () => {
     test.describe(`${device} device`, () => {
       test.use({ colorScheme: device });
 
-      test(`a visitor picks ${chosen}; it applies, passes axe, and survives a reload`, async ({ page, browserName }) => {
-        // Wait for hydration, so the select's change handler is attached.
-        await page.goto("/", { waitUntil: "networkidle" });
+      test(`a visitor picks ${chosen} in Settings; it applies, passes axe, and survives a reload`, async ({ page, browserName }) => {
+        // Wait for hydration, so the theme picker's change handler is attached.
+        await page.goto("/settings", { waitUntil: "networkidle" });
         const before = await backgroundLuminance(page);
-        const select = page.getByLabel("Color theme");
-        await tabTo(page, select, browserName);
-        await expectVisibleFocus(select);
-        await select.selectOption(chosen);
+        // Keyboard: Tab reaches the checked choice (Auto); arrow keys move through Light, then Dark.
+        const auto = page.getByRole("radio", { name: /^Auto/ });
+        await tabTo(page, auto, browserName);
+        await expectVisibleFocus(page.locator(".theme-picker__option", { has: auto }));
+        await page.keyboard.press("ArrowRight");
+        if (chosen === "dark") await page.keyboard.press("ArrowRight");
+        await expect(page.getByRole("radio", { name: new RegExp(`^${chosen === "dark" ? "Dark" : "Light"}`) })).toBeChecked();
         await expect(page.locator("html")).toHaveAttribute("data-theme", chosen);
+        // Let color transitions finish, so axe and the luminance check see the final colors.
+        await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
         const after = await backgroundLuminance(page);
         if (chosen === "dark") expect(after).toBeLessThan(before);
         else expect(after).toBeGreaterThan(before);
@@ -201,7 +206,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expectAccessible(page);
 
       await page.goto("/");
-      const empty = page.locator(".category-panel").filter({ has: page.getByRole("heading", { name: "Entertainment" }) });
+      const empty = page.locator(".category-row").filter({ has: page.getByRole("heading", { name: "Entertainment" }) });
       await expect(empty).toContainText(/nothing|no /i);
       await expectAccessible(page);
     });
@@ -224,7 +229,7 @@ test("pages hydrate without errors in every browser", async ({ page, context, ba
   };
   for (const path of ["/", "/categories", `/categories/${seed.archiveCategory.slug}`, seed.visibleReport.path, "/search?q=test", "/sign-in"]) await visit(path);
   await signInAs(context, baseURL!, "owner", "hydration-owner");
-  for (const path of ["/dashboard", "/saved", "/editor", "/editor/homepage", `/editor/publications/${seed.visibleReport.id}`, "/account", "/owner"]) await visit(path);
+  for (const path of ["/settings", "/saved", "/editor", "/editor/homepage", `/editor/publications/${seed.visibleReport.id}`, "/account", "/owner"]) await visit(path);
   expect(errors).toEqual([]);
 });
 

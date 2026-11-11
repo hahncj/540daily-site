@@ -301,12 +301,12 @@ export const userPreferences = sqliteTable("user_preferences", {
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   theme: text("theme", { enum: THEMES }).notNull().default("system"),
-  /** Set when the personal dashboard is first seeded from the public layout. */
+  /** Set when the member first saves their own home page panels; cleared when they go back to the public layout. */
   layoutInitializedAt: timestamp("layout_initialized_at"),
   updatedAt: timestamp("updated_at").notNull(),
 });
 
-/** Personal dashboard panels: chosen categories and their order. */
+/** A member's own home page panels: chosen categories and their order. */
 export const userCategoryPanels = sqliteTable(
   "user_category_panels",
   {

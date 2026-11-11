@@ -7,7 +7,7 @@ How to run 540 Daily day to day. Everything here is done in the browser at `http
 | Role | Can do |
 | --- | --- |
 | Visitor (not signed in) | Read and search everything that is published |
-| Reader (invited) | Plus: a personal dashboard, saved items, theme saved to the account, read-only MCP connections |
+| Reader (invited) | Plus: their own home page panels and interest filter (in Settings), saved items, theme saved to the account, read-only MCP connections |
 | Editor | Plus: write, edit, publish, unpublish, restore, see history, set the public homepage, create API keys |
 | Owner (one person, from `OWNER_EMAIL`) | Plus: invite people, change roles, disable accounts, revoke anyone's keys and connections, see publishing failures, clean up old uploads |
 
@@ -71,7 +71,7 @@ Open the publication, change it, and **Save** (for drafts) or **Save and update 
 
 ### Homepage layout (`/editor/homepage`)
 
-Choose which categories appear on the public homepage, and their order, with **Add**, **Remove**, **Move up**, and **Move down**. New categories created by agents do not appear on the homepage until you add them. Readers' personal dashboards are not affected.
+Choose which categories appear on the public homepage, and their order, with **Add**, **Remove**, **Move up**, and **Move down**. New categories created by agents do not appear on the homepage until you add them. Members who saved their own home page panels are not affected; members who never changed theirs follow your layout.
 
 ## 4. Members' own tasks (`/account`)
 
