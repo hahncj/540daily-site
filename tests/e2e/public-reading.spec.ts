@@ -40,7 +40,8 @@ for (const colorScheme of ["light", "dark"] as const) {
 
     test("A1: detail page shows body, image, sources, and related items", async ({ page }) => {
       await page.goto("/");
-      await page.getByRole("link", { name: "Test data: pelican research report" }).click();
+      // The report may also lead the page, so open it from its category panel.
+      await page.getByRole("region", { name: "Technology" }).getByRole("link", { name: "Test data: pelican research report" }).click();
       await expect(page).toHaveURL(seed.visibleReport.path);
       await expect(page.getByRole("heading", { level: 1, name: seed.visibleReport.title })).toBeVisible();
       await expect(page.getByText("E2E Editor via E2E research agent")).toBeVisible();

@@ -100,6 +100,7 @@ Leave out packages nothing imports (the earlier app listed `@react-router/node` 
 | @types/better-sqlite3 | 9.6.0 | 2026-11-06 |  |
 | markdown-it (+ @types/markdown-it 14.2.0) | 15.0.3 | 2026-11-06 | Markdown parser. See below |
 | xss | 1.0.17 | 2026-11-06 | HTML allowlist sanitizer. See below |
+| @fontsource-variable/literata, @fontsource-variable/public-sans | 5.3.0 | 2026-11-11 | Self-hosted variable fonts (headlines and reading text; interface text). Bundled by Vite, so readers make no third-party font requests |
 
 Install scripts are allowed only for `esbuild`, `workerd`, `better-sqlite3`, and `fsevents`, at the versions the lockfile resolves (`allowScripts` in `package.json`; manage with `npm install-scripts`). `esbuild@0.18.20` and `@0.25.12` come in through drizzle-kit.
 

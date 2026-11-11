@@ -25,7 +25,7 @@ export function PublicationList({
   return (
     <ul className={["publication-list", className].filter(Boolean).join(" ")}>
       {items.map((item) => (
-        <li key={item.id} className="publication-item">
+        <li key={item.id} className={`publication-item publication-item--${item.type}`}>
           <PublicationListEntry item={item} headingLevel={headingLevel} showCategory={showCategory} saved={savedIds ? savedIds.includes(item.id) : null} />
         </li>
       ))}

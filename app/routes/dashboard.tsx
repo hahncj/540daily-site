@@ -1,11 +1,11 @@
 import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect, useRef } from "react";
-import { data, Form, Link, useNavigation } from "react-router";
+import { data, Form, useNavigation } from "react-router";
 import { moveCategory, type Category } from "../../server/core/categories";
 import { PANEL_SIZE } from "../../server/core/publications";
 import { HTTP_STATUS } from "../../server/core/result";
 import { requireRolePage } from "../access.server";
-import { PublicationList } from "../components/publication-list";
+import { CategoryRows } from "../components/category-rows";
 import { servicesContext } from "../context";
 import { readerWrite } from "../reader.server";
 import "../styles/reader.css";
@@ -182,28 +182,11 @@ export default function Dashboard({ loaderData, actionData }: Route.ComponentPro
           Your dashboard has no panels. <a href="#customize">Add a category</a> to get started.
         </p>
       ) : (
-        <div className="panel-grid">
-          {panels.map(({ category, items }) => (
-            <section key={category.id} className="panel category-panel" aria-labelledby={`panel-${category.id}`}>
-              <h2 id={`panel-${category.id}`} className="category-panel__title">
-                <Link to={`/categories/${category.slug}`}>{category.name}</Link>
-              </h2>
-              {items.length === 0 ? (
-                <p className="muted">{filtered ? `Nothing in ${category.name} matches your interests yet.` : `Nothing published in ${category.name} yet.`}</p>
-              ) : (
-                <>
-                  <PublicationList items={items} savedIds={savedIds} />
-                  <p className="category-panel__more">
-                    <Link to={`/categories/${category.slug}`}>
-                      More in {category.name}
-                      <span aria-hidden="true"> →</span>
-                    </Link>
-                  </p>
-                </>
-              )}
-            </section>
-          ))}
-        </div>
+        <CategoryRows
+          panels={panels}
+          savedIds={savedIds}
+          emptyMessage={(name) => (filtered ? `Nothing in ${name} matches your interests yet.` : `Nothing published in ${name} yet.`)}
+        />
       )}
 
       <section id="customize" aria-labelledby="customize-title" className="dashboard-settings" ref={settingsRef}>

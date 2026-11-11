@@ -52,12 +52,15 @@ export function ThemeToggle({ initial, signedIn }: { initial: ThemeChoice; signe
 
   return (
     <span className="theme-toggle">
-      <label>
-        <span className="visually-hidden">Color theme</span>
-        <select className="button" value={theme} onChange={(e) => choose(e.currentTarget.value as ThemeChoice)}>
-          <option value="system">Theme: device</option>
-          <option value="light">Theme: light</option>
-          <option value="dark">Theme: dark</option>
+      <label className="theme-toggle__control">
+        <svg className="theme-toggle__icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor" />
+        </svg>
+        <select aria-label="Color theme" value={theme} onChange={(e) => choose(e.currentTarget.value as ThemeChoice)}>
+          <option value="system">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
         </select>
       </label>
       {failed ? (
