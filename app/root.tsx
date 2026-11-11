@@ -148,6 +148,8 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
   return (
     <section className="notice notice--error" role="alert" aria-labelledby="error-title">
+      {/* Route meta does not run for errors, so the page title is set here (WCAG 2.4.2). */}
+      <title>{`${title} · 540 Daily`}</title>
       <h1 id="error-title">{title}</h1>
       <p>{message}</p>
       <p>

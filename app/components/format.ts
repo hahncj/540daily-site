@@ -5,24 +5,24 @@ import type { PublicationType } from "../../server/core/publications";
 export const SUMMARY_PREVIEW_LENGTH = 240;
 
 const dateFormat = new Intl.DateTimeFormat("en-US", { timeZone: SITE_TIME_ZONE, year: "numeric", month: "short", day: "numeric" });
-const dateTimeFormat = new Intl.DateTimeFormat("en-US", {
-  timeZone: SITE_TIME_ZONE,
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZoneName: "short",
-});
+const timeFormat = new Intl.DateTimeFormat("en-US", { timeZone: SITE_TIME_ZONE, hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+
+/**
+ * Engines join and space dates differently ("Nov 6, 2026, 9:00 AM" in Node and Chromium, "Nov 6, 2026 at
+ * 9:00 AM" in WebKit, sometimes with narrow no-break spaces). Server and browser must render the same
+ * text or React's hydration fails, so the pieces are joined here with plain spaces.
+ */
+export const plainSpaces = (text: string) => text.replace(/\s+/g, " ");
 
 /** "Nov 6, 2026" in Central Time. */
 export function formatDate(value: Date | string): string {
-  return dateFormat.format(new Date(value));
+  return plainSpaces(dateFormat.format(new Date(value)));
 }
 
 /** "Nov 6, 2026, 9:00 AM CST". */
 export function formatDateTime(value: Date | string): string {
-  return dateTimeFormat.format(new Date(value));
+  const date = new Date(value);
+  return `${formatDate(date)}, ${plainSpaces(timeFormat.format(date))}`;
 }
 
 /** Machine-readable value for `<time dateTime>`. */
