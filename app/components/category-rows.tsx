@@ -10,7 +10,7 @@ export type CategoryRow = { category: { id: string; name: string; slug: string }
 /**
  * Category panels as full-width rows: the category name on the left, its newest items beside it.
  * A category with nothing in it gets one quiet line instead of an empty box.
- * Shared by the public homepage and the personal dashboard.
+ * Used by the home page, for both the public layout and a member's own panels.
  */
 export function CategoryRows({
   panels,

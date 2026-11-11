@@ -70,7 +70,7 @@ flowchart LR
 5. `GET|HEAD /attachments/*` → attachment serving with a visibility check (see [DATA_AND_STORAGE.md](DATA_AND_STORAGE.md) section 7).
 6. Everything else → React Router (`createRequestHandler`): pages, `/sitemap.xml`, and any UI JSON routes declared in `app/routes.ts`.
 
-After dispatch, each response is copied into a new `Response` so headers can be set (responses from `fetch()` can have immutable headers). Use this to set `X-Robots-Tag: noindex` on **private** paths only: `/sign-in`, `/consent`, `/dashboard`, `/saved`, `/editor*`, `/owner*`, `/api/*`, `/mcp`. Public pages stay indexable. Do not add a site-wide `noindex`.
+After dispatch, each response is copied into a new `Response` so headers can be set (responses from `fetch()` can have immutable headers). Use this to set `X-Robots-Tag: noindex` on **private** paths only: `/sign-in`, `/consent`, `/dashboard`, `/settings`, `/saved`, `/editor*`, `/owner*`, `/api/*`, `/mcp`. Public pages stay indexable. Do not add a site-wide `noindex`.
 
 ## 4. Services are built per request
 

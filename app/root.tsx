@@ -9,12 +9,10 @@ import {
   ScrollRestoration,
   useRouteLoaderData,
 } from "react-router";
-import { roleAtLeast } from "../server/core/access";
 import type { Route } from "./+types/root";
-import { AccountAvatar } from "./components/account-avatar";
+import { AccountMenu, SettingsLink } from "./components/account-menu";
 import { SignInButton } from "./components/sign-in-button";
-import { SignOutButton } from "./components/sign-out-button";
-import { ThemeToggle, themeBootScript, type ThemeChoice } from "./components/theme-toggle";
+import { themeBootScript, type ThemeChoice } from "./components/theme-picker";
 import { servicesContext } from "./context";
 import { getViewer } from "./session.server";
 import { SITE_TIME_ZONE } from "../server/core/dates";
@@ -126,39 +124,16 @@ function SiteHeader() {
             <li>
               <NavLink to="/search">Search</NavLink>
             </li>
-            {viewer ? (
-              <>
-                <li>
-                  <NavLink to="/dashboard">My dashboard</NavLink>
-                </li>
-                <li>
-                  <NavLink to="/saved">Saved</NavLink>
-                </li>
-              </>
-            ) : null}
-            {viewer && roleAtLeast(viewer.role, "editor") ? (
-              <li>
-                <NavLink to="/editor">Editor</NavLink>
-              </li>
-            ) : null}
-            {viewer && viewer.role === "owner" ? (
-              <li>
-                <NavLink to="/owner">Owner</NavLink>
-              </li>
-            ) : null}
           </ul>
         </nav>
         <div className="site-header__tools">
-          <ThemeToggle initial={data?.theme ?? "system"} signedIn={!!viewer} />
           {viewer ? (
-            <>
-              <NavLink to="/account" className="account-link" aria-label="Account" title={viewer.email}>
-                <AccountAvatar name={viewer.name} email={viewer.email} image={viewer.image} />
-              </NavLink>
-              <SignOutButton />
-            </>
+            <AccountMenu viewer={viewer} />
           ) : (
-            <SignInButton />
+            <>
+              <SettingsLink />
+              <SignInButton />
+            </>
           )}
         </div>
       </div>

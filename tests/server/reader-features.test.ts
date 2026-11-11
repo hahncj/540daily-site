@@ -1,12 +1,13 @@
-// Lane 3B: personal dashboard, interest filters, theme, and bookmarks (A9), and reader isolation (A3).
+// Lane 3B: personal home page panels, interest filters, theme, and bookmarks (A9), and reader isolation (A3).
 // Loaders and actions run directly with real services over in-memory SQLite.
 // Every identity and publication here is test data, not real news.
 import { describe, expect, it } from "vitest";
 import { loader as rootLoader } from "../../app/root";
-import * as dashboardRoute from "../../app/routes/dashboard";
+import { loader as dashboardRedirect } from "../../app/routes/dashboard";
 import { loader as homeLoader } from "../../app/routes/home";
 import { loader as publicationLoader } from "../../app/routes/publication";
 import * as savedRoute from "../../app/routes/saved";
+import * as settingsRoute from "../../app/routes/settings";
 import { SESSION_COOKIE } from "../../server/auth/auth";
 import type { Services } from "../../server/app";
 import type { MemberActor } from "../../server/core/actors";
@@ -14,6 +15,7 @@ import { MAX_BOOKMARKS } from "../../server/core/bookmarks";
 import { publicationPath, type Publication } from "../../server/core/publications";
 import { bookmarks } from "../../server/db/schema";
 import { memberActor, storyInput, testClock } from "../helpers/publishing";
+import { createRouterContext } from "../../app/context";
 import { run } from "../helpers/routes";
 import { BASE_URL, createTestServices, request, sessionCookieFor } from "../helpers/services";
 
@@ -42,6 +44,7 @@ async function anotherSession(services: Services, userId: string) {
 }
 
 type Dashboard = {
+  personal: boolean;
   panels: Array<{ category: { id: string; name: string }; items: Array<{ id: string; title: string }> }>;
   available: Array<{ id: string; name: string }>;
   interestTags: Array<{ id: string; name: string }>;
@@ -50,15 +53,23 @@ type Dashboard = {
 };
 type Saved = { saved: { items: Array<{ kind: string; publicationId: string; item?: { title: string } }>; total: number } };
 
-async function dashboard(services: Services, cookie: string) {
-  const out = await run(dashboardRoute.loader, services, get("/dashboard", cookie));
-  expect(out.status).toBe(200);
-  return out.data as Dashboard;
+/** A member's home page (panels, filter, saved state) together with their Settings choices for it. */
+async function dashboard(services: Services, cookie: string): Promise<Dashboard> {
+  const home = await run(homeLoader, services, get("/", cookie));
+  expect(home.status).toBe(200);
+  const settings = await run(settingsRoute.loader, services, get("/settings", cookie));
+  expect(settings.status).toBe(200);
+  const h = home.data as Omit<Dashboard, "available" | "tagChoices">;
+  const s = (settings.data as { home: { personal: boolean; panels: Array<{ id: string }>; available: Dashboard["available"]; tagChoices: Dashboard["tagChoices"] } }).home;
+  // Settings lists the same panels, in the same order, as the home page shows.
+  expect(s.panels.map((p) => p.id)).toEqual(h.panels.map((p) => p.category.id));
+  expect(s.personal).toBe(h.personal);
+  return { ...h, available: s.available, tagChoices: s.tagChoices };
 }
 const panelNames = (d: Dashboard) => d.panels.map((p) => p.category.name);
 
 function dashboardAction(services: Services, cookie: string, fields: Fields) {
-  return run(dashboardRoute.action as never, services, post("/dashboard", cookie, fields));
+  return run(settingsRoute.action as never, services, post("/settings", cookie, fields));
 }
 
 async function movePanel(services: Services, cookie: string, intent: string, categoryId: string) {
@@ -102,33 +113,44 @@ async function setup() {
   return { services, clock, editor, stories, id, refresh };
 }
 
-describe("A9: personal dashboard", () => {
-  it("starts from the public layout and later public changes do not overwrite it", async () => {
+describe("A9: personal home page", () => {
+  it("follows the public layout until the member first changes it; after that public changes do not overwrite it", async () => {
     const { services, editor, id, clock, refresh } = await setup();
     const reader = await sessionCookieFor(services, "reader@example.test");
     const first = await dashboard(services, reader.cookie);
+    expect(first.personal).toBe(false);
     expect(panelNames(first)).toEqual(["Technology", "Science", "Sports"]);
     expect(first.panels[0]!.items.map((i) => i.title)).toEqual(["Test data: Technology story"]);
 
-    // The editor changes the public layout and a new category appears.
+    // The editor changes the public layout and a new category appears: a member who never customized follows it.
     clock.advance(60_000);
     await publish(services, editor, storyInput({ category: "Health", title: "Test data: Health story" }));
     await refresh();
-    const changed = await services.homepage.setLayout(editor, [id("Sports"), id("Health")]);
-    expect(changed.ok).toBe(true);
+    expect((await services.homepage.setLayout(editor, [id("Sports"), id("Health")])).ok).toBe(true);
+    const followed = await dashboard(services, reader.cookie);
+    expect(followed.personal).toBe(false);
+    expect(panelNames(followed)).toEqual(["Sports", "Health"]);
 
+    // The first change saves the member's own layout, starting from the public one.
+    expect((await movePanel(services, reader.cookie, "add", id("Technology"))).status).toBe(200);
+    const own = await dashboard(services, reader.cookie);
+    expect(own.personal).toBe(true);
+    expect(panelNames(own)).toEqual(["Sports", "Health", "Technology"]);
+
+    // Later public changes never overwrite it; new categories are offered but not inserted.
+    expect((await services.homepage.setLayout(editor, [id("Science")])).ok).toBe(true);
     const later = await dashboard(services, reader.cookie);
-    expect(panelNames(later)).toEqual(["Technology", "Science", "Sports"]);
-    // New categories are offered in the selector but never inserted automatically.
-    expect(later.available.map((c) => c.name)).toEqual(["Health"]);
+    expect(panelNames(later)).toEqual(["Sports", "Health", "Technology"]);
+    expect(later.available.map((c) => c.name)).toEqual(["Science"]);
 
-    // A member who first visits now starts from the current public layout.
+    // Saving only interest tags does not freeze the panels.
     const newcomer = await sessionCookieFor(services, "newcomer@example.test");
-    expect(panelNames(await dashboard(services, newcomer.cookie))).toEqual(["Sports", "Health"]);
+    expect((await dashboardAction(services, newcomer.cookie, { intent: "tags" })).status).toBe(200);
+    expect((await dashboard(services, newcomer.cookie)).personal).toBe(false);
   });
 
   it("panel choice and order persist across sessions and devices without changing the public layout", async () => {
-    const { services, id } = await setup();
+    const { services, id, editor } = await setup();
     const reader = await sessionCookieFor(services, "reader@example.test");
 
     expect((await movePanel(services, reader.cookie, "down", id("Technology"))).status).toBe(200);
@@ -144,9 +166,13 @@ describe("A9: personal dashboard", () => {
     const home = await run(homeLoader, services, get("/"));
     expect((home.data as Dashboard).panels.map((p) => p.category.name)).toEqual(["Technology", "Science", "Sports"]);
 
-    // Reset copies the current public layout again.
+    // Reset goes back to following the public layout, including later public changes.
     expect((await movePanel(services, reader.cookie, "reset", "")).status).toBe(200);
-    expect(panelNames(await dashboard(services, otherDevice))).toEqual(["Technology", "Science", "Sports"]);
+    const reset = await dashboard(services, otherDevice);
+    expect(reset.personal).toBe(false);
+    expect(panelNames(reset)).toEqual(["Technology", "Science", "Sports"]);
+    expect((await services.homepage.setLayout(editor, [id("Sports")])).ok).toBe(true);
+    expect(panelNames(await dashboard(services, reader.cookie))).toEqual(["Sports"]);
   });
 
   it("refuses a change based on an out-of-date order and categories that are not public", async () => {
@@ -360,14 +386,19 @@ describe("A3: reader A cannot see or change reader B's data", () => {
     const { services, stories } = await setup();
     const reader = await sessionCookieFor(services, "reader@example.test");
 
-    for (const loader of [dashboardRoute.loader, savedRoute.loader]) {
-      const out = await run(loader as never, services, get("/dashboard"));
-      expect(out.status).toBe(302);
-      expect(out.response?.headers.get("Location")).toMatch(/^\/sign-in\?next=/);
-    }
+    const savedPage = await run(savedRoute.loader as never, services, get("/saved"));
+    expect(savedPage.status).toBe(302);
+    expect(savedPage.response?.headers.get("Location")).toMatch(/^\/sign-in\?next=/);
+    // Settings is open to visitors (Appearance), but shows no home page choices without a member.
+    expect((await run(settingsRoute.loader as never, services, get("/settings"))).data).toEqual({ home: null });
+    // The old dashboard address now goes to the home page.
+    const old = await run(dashboardRedirect as never, services, get("/dashboard"));
+    expect(old.status).toBe(301);
+    expect(old.response?.headers.get("Location")).toBe("/");
     const writes: Array<[unknown, string, Fields]> = [
       [savedRoute.action, "/saved", { intent: "save", publicationId: stories.Sports!.id, js: "1" }],
-      [dashboardRoute.action, "/dashboard", { intent: "theme", theme: "dark" }],
+      [settingsRoute.action, "/settings", { intent: "theme", theme: "dark" }],
+      [settingsRoute.action, "/settings", { intent: "reset", order: "" }],
     ];
     for (const [fn, path, fields] of writes) {
       expect((await run(fn as never, services, post(path, null, fields))).status).toBe(401);
@@ -378,8 +409,21 @@ describe("A3: reader A cannot see or change reader B's data", () => {
 
   it("personal pages are not indexed", async () => {
     const { services } = await setup();
-    for (const path of ["/dashboard", "/saved"]) {
+    for (const path of ["/settings", "/saved"]) {
       expect((await request(services, path)).headers.get("X-Robots-Tag")).toBe("noindex");
     }
+  });
+
+  it("a member's home page is never stored by a shared cache", async () => {
+    const { services } = await setup();
+    const reader = await sessionCookieFor(services, "reader@example.test");
+    const init = async (cookie?: string) => {
+      const value = (await homeLoader({ request: get("/", cookie), params: {}, context: createRouterContext(services) } as never)) as {
+        init?: { headers?: Record<string, string> } | null;
+      };
+      return value.init?.headers?.["Cache-Control"] ?? null;
+    };
+    expect(await init(reader.cookie)).toBe("private, no-store");
+    expect(await init()).toBeNull();
   });
 });

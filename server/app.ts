@@ -136,7 +136,7 @@ export function createServices(deps: HostDeps): Services {
 export type RenderPage = (request: Request, services: Services) => Promise<Response>;
 
 /** Paths that must not be indexed. Public pages stay indexable: no site-wide noindex. */
-const PRIVATE_PATH = /^\/(sign-in|consent|dashboard|saved|account|editor|owner|api|mcp)(\/|$)/;
+const PRIVATE_PATH = /^\/(sign-in|consent|dashboard|settings|saved|account|editor|owner|api|mcp)(\/|$)/;
 
 const NO_STORE = { "Cache-Control": "no-store" };
 

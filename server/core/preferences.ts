@@ -1,4 +1,6 @@
-// Reader preferences: personal dashboard panels (choice and order), explicit interest tags, and theme.
+// Reader preferences: personal home page panels (choice and order), explicit interest tags, and theme.
+// A member sees the public homepage layout until they first change their panels; only then is a
+// personal layout saved. Later public layout changes never overwrite a saved personal layout.
 // Every method takes the signed-in member's own user ID; callers never pass another member's ID.
 import type { Category, Tag } from "./categories";
 import { MAX_HOMEPAGE_PANELS } from "./categories";
@@ -18,15 +20,14 @@ export interface PreferencesRepository {
   /** The member's saved theme, or null when nothing is saved. */
   getTheme(userId: string): Promise<ThemeChoice | null>;
   setTheme(userId: string, theme: ThemeChoice, now: Date): Promise<void>;
-  /**
-   * One transaction: if the member's dashboard was never set up, copy the current public homepage
-   * layout into it and mark it set up. Does nothing afterwards, so later public changes never overwrite it.
-   */
-  seedFromHomepage(userId: string, now: Date): Promise<void>;
-  /** The member's dashboard panels, in order. */
+  /** True once the member has saved their own panel layout (until they reset it). */
+  hasPersonalLayout(userId: string): Promise<boolean>;
+  /** The member's saved panels, in order. */
   panels(userId: string): Promise<Category[]>;
-  /** Replace the member's panels in one transaction and mark the dashboard set up. */
+  /** Replace the member's panels in one transaction and mark the personal layout saved. */
   replacePanels(userId: string, categoryIds: readonly string[], now: Date): Promise<void>;
+  /** Delete the member's saved panels in one transaction, so they follow the public layout again. */
+  clearPanels(userId: string, now: Date): Promise<void>;
   interestTags(userId: string): Promise<Tag[]>;
   replaceInterestTags(userId: string, tagIds: readonly string[], now: Date): Promise<void>;
 }
@@ -52,11 +53,18 @@ export function createPreferences({ repo, lookups, now }: { repo: PreferencesRep
       return ok(theme);
     },
 
-    /** The personal dashboard: panels in order (seeded from the public layout on first use) and interest tags. */
-    async dashboard(userId: string): Promise<{ panels: Category[]; interestTags: Tag[] }> {
-      await repo.seedFromHomepage(userId, now());
-      const [panels, interestTags] = await Promise.all([repo.panels(userId), repo.interestTags(userId)]);
-      return { panels, interestTags };
+    /**
+     * The member's home page preferences. `panels` is null when they never saved their own layout:
+     * the caller then shows the current public homepage layout.
+     */
+    async home(userId: string): Promise<{ panels: Category[] | null; interestTags: Tag[] }> {
+      const [personal, interestTags] = await Promise.all([repo.hasPersonalLayout(userId), repo.interestTags(userId)]);
+      return { panels: personal ? await repo.panels(userId) : null, interestTags };
+    },
+
+    /** Forget the member's own layout; their home page follows the public layout again. Interests are kept. */
+    async resetPanels(userId: string): Promise<void> {
+      await repo.clearPanels(userId, now());
     },
 
     async setPanels(userId: string, categoryIds: readonly string[]): Promise<Result<Category[]>> {

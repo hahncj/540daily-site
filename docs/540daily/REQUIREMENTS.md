@@ -81,12 +81,12 @@ Routes below and display limits are defaults; the dashboard/drill-down behavior 
 
 | Route | Experience |
 | --- | --- |
-| `/` | Public category dashboard configured by editors |
+| `/` | Category dashboard: the public layout configured by editors; for a signed-in member who saved their own panels, their personal layout, filtered by their interests |
 | `/categories` | Directory of categories containing published content, including those absent from the homepage |
 | `/categories/:slug` | Category publications, newest first, with type filter and pagination |
 | `/publications/:id/:slug?` | Story/report detail with headline, summary, Markdown body, attachments, category, dates, author/agent attribution, and optional sources |
 | `/search` | Keyword search with category, publication type, and date range |
-| `/dashboard` | Signed-in personal category dashboard and explicit-interest filters |
+| `/settings` | Appearance (theme) for everyone; for signed-in members, their home page panels and explicit-interest filters. `/dashboard` redirects to `/` (changed 2026-11-11: the personal dashboard merged into the home page) |
 | `/saved` | Current published versions of the reader's bookmarks |
 | `/sign-in`, `/consent` | Google sign-in and agent OAuth consent |
 | `/editor` | Publication list, create/edit, preview, history, restore, unpublish; homepage category configuration |
@@ -99,7 +99,7 @@ Default experience:
 - Five newest publications per panel; headline plus up to 240 characters of summary, date, and publication-type label. No invented sample stories in production.
 - Use original app publication time for recency; an edit does not move an old story to the top. Show updated time separately.
 - Category/search pages show 20 results per page, with stable ordering using timestamp and ID.
-- A first-time personal dashboard starts from the current public layout. Later public layout changes do not overwrite personal settings. New categories become available in the selector, without automatic insertion.
+- A member's home page follows the current public layout until they first change their panels; that change saves a personal layout starting from the public one. Later public layout changes do not overwrite it. Resetting goes back to following the public layout. New categories become available in the selector, without automatic insertion.
 - Preserve the earlier explicit-interest requirement using optional agent/editor-supplied tags for topics, teams, people, and companies. Readers can select known tags to filter their personal dashboard. Selected categories use OR matching; if tags are selected, match any selected tag within those categories. Do not infer interests or require agents to submit tags.
 - Related publications: up to five published items from the same category, excluding the current item, newest first. No AI similarity feature.
 - Theme defaults to the device preference. Save explicit choices to signed-in accounts; anonymous visitors may save theme locally. Anonymous theme switching is not a content-edit permission.

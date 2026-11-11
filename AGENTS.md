@@ -47,10 +47,15 @@ Lane 3A (Account and owner console) notes:
 
 Lane 3B (Reader features) notes:
 
-- `services.preferences` (dashboard panels, interest tags, theme) and `services.bookmarks` take the signed-in member's own `userId`; never pass an ID from a form. The first `/dashboard` visit copies the public homepage layout (`seedFromHomepage`); later public changes never overwrite it.
-- Save buttons: `PublicationList` takes `savedIds` (from `savedIdsFor()` in `app/reader.server.ts`; null when signed out hides the buttons). `BookmarkButton` posts to the `/saved` action; the header theme switcher posts `intent=theme` to the `/dashboard` action. Both use `readerWrite()` so a refused write shows inline instead of the error page.
+- `services.preferences` (home page panels, interest tags, theme) and `services.bookmarks` take the signed-in member's own `userId`; never pass an ID from a form. `preferences.home()` returns `panels: null` until the member first changes their panels; callers then show the public layout (`homeLayout()` in `app/home.server.ts`). `setPanels` saves a personal layout; `resetPanels` forgets it. Saving interest tags alone does not save a layout.
+- Save buttons: `PublicationList` takes `savedIds` (from `savedIdsFor()` in `app/reader.server.ts`; null when signed out hides the buttons). `BookmarkButton` posts to the `/saved` action; the Settings theme picker posts `intent=theme` to the `/settings` action. Both use `readerWrite()` so a refused write shows inline instead of the error page.
 - Bookmarks of unpublished or draft items list as `{ kind: "unavailable" }` with no title or content.
 - Playwright: `signInExisting()` adds a second session for a member (another device). Set `E2E_PORT` to run browser tests in two worktrees at once (default 4173).
+
+UI redesign (header and home page) notes:
+
+- The main nav is Home, Categories, Search. Role pages (Editor, Homepage layout, Owner console), Saved, Account, Settings, and Sign out live in the avatar menu (`app/components/account-menu.tsx`). Visitors get a Settings gear instead.
+- There is no separate dashboard page: `/` shows a signed-in member's own panels and interest filter, and `/dashboard` redirects to `/`. `/settings` holds Appearance (everyone) and the home page panels and interests (members). A signed-in home page is sent with `Cache-Control: private, no-store`.
 
 ## Document authority (read before building)
 
