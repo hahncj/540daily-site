@@ -1,8 +1,9 @@
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import type { CategoriesRepository, TagsRepository } from "../core/categories";
 import { categories, homepagePanels, publications, publicationTags, tags } from "../db/schema";
 import { atomic } from "./atomic";
 import type { Database } from "./db";
+import { inList } from "./in-list";
 
 const categoryColumns = { id: categories.id, name: categories.name, slug: categories.slug };
 const tagColumns = { id: tags.id, name: tags.name, slug: tags.slug };
@@ -29,7 +30,7 @@ export function createCategoriesRepository(db: Database): CategoriesRepository {
 
     async getByIds(ids) {
       if (ids.length === 0) return [];
-      return db.select(categoryColumns).from(categories).where(inArray(categories.id, [...ids]));
+      return db.select(categoryColumns).from(categories).where(inList(categories.id, [...ids]));
     },
 
     homepageLayout: () =>
@@ -66,7 +67,7 @@ export function createTagsRepository(db: Database): TagsRepository {
 
     async getByIds(ids) {
       if (ids.length === 0) return [];
-      return db.select(tagColumns).from(tags).where(inArray(tags.id, [...ids]));
+      return db.select(tagColumns).from(tags).where(inList(tags.id, [...ids]));
     },
   };
 }

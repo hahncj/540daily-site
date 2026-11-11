@@ -1,10 +1,11 @@
 // Drizzle repositories for reader preferences and bookmarks. Every query is filtered by the member's user ID.
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { BookmarksRepository } from "../core/bookmarks";
 import type { PreferencesRepository } from "../core/preferences";
 import { bookmarks, categories, publications, tags, userCategoryPanels, userInterestTags, userPreferences } from "../db/schema";
 import { atomic } from "./atomic";
 import type { Database } from "./db";
+import { inList } from "./in-list";
 import { selectListRows, withTags, type ListRow } from "./publication-rows";
 
 export function createPreferencesRepository(db: Database): PreferencesRepository {
@@ -126,7 +127,7 @@ export function createBookmarksRepository(db: Database): BookmarksRepository {
       const rows =
         ids.length === 0
           ? []
-          : await selectListRows(db).where(and(inArray(publications.id, ids), eq(publications.status, "published")));
+          : await selectListRows(db).where(and(inList(publications.id, ids), eq(publications.status, "published")));
       const items = new Map((await withTags(db, rows as ListRow[])).map((item) => [item.id, item]));
       return {
         entries: saved.map((s) => ({ publicationId: s.publicationId, savedAt: s.savedAt, item: items.get(s.publicationId) ?? null })),
@@ -139,7 +140,7 @@ export function createBookmarksRepository(db: Database): BookmarksRepository {
       const rows = await db
         .select({ id: bookmarks.publicationId })
         .from(bookmarks)
-        .where(and(eq(bookmarks.userId, userId), inArray(bookmarks.publicationId, [...publicationIds])));
+        .where(and(eq(bookmarks.userId, userId), inList(bookmarks.publicationId, [...publicationIds])));
       return new Set(rows.map((r) => r.id));
     },
   };

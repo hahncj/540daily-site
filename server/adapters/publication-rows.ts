@@ -1,9 +1,10 @@
 // Shared read helpers for publication list items (used by the publications and search repositories).
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { Tag } from "../core/categories";
 import type { PublicationListItem } from "../core/publications";
 import { categories, publications, publicationTags, tags, user } from "../db/schema";
 import type { Database } from "./db";
+import { inList } from "./in-list";
 
 export const listColumns = {
   id: publications.id,
@@ -59,7 +60,7 @@ export async function tagsFor(db: Database, publicationIds: readonly string[]): 
     .select({ publicationId: publicationTags.publicationId, id: tags.id, name: tags.name, slug: tags.slug })
     .from(publicationTags)
     .innerJoin(tags, eq(tags.id, publicationTags.tagId))
-    .where(inArray(publicationTags.publicationId, [...publicationIds]))
+    .where(inList(publicationTags.publicationId, [...publicationIds]))
     .orderBy(asc(tags.name));
   for (const r of rows) {
     const list = out.get(r.publicationId) ?? [];

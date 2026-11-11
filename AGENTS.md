@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Current state
 
-Stage 0 (Foundation) and Stage 1 (Publishing core) are built. Stage 0: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md).
+Stages 0–5 are done: the app is live at https://540daily.com. The owner skipped the live A17 sign-in/agent/upload checks (see docs/540daily/DEPLOYMENT_CHECKLIST.md). Stage 0 (Foundation) and Stage 1 (Publishing core) notes follow. Stage 0: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md).
 
 Stage 0 notes for later lanes:
 
