@@ -12,6 +12,7 @@ import {
 } from "../core/publications";
 import { attachmentReferences, categories, publicationRevisions, publications, publicationTags, submissionReceipts, tags, user } from "../db/schema";
 import { atomic, changesOf } from "./atomic";
+import { inList } from "./in-list";
 import type { Database } from "./db";
 import { listColumns, selectListRows, tagsFor, toListItem, withTags, type ListRow } from "./publication-rows";
 import { isConstraintError } from "./sql-errors";
@@ -298,13 +299,13 @@ export function createPublicationsRepository(db: Database): PublicationsReposito
         .where(
           and(
             eq(publications.status, "published"),
-            inArray(publications.categoryId, [...categoryIds]),
+            inList(publications.categoryId, [...categoryIds]),
             tagIds && tagIds.length > 0
               ? exists(
                   db
                     .select({ one: sql`1` })
                     .from(publicationTags)
-                    .where(and(eq(publicationTags.publicationId, publications.id), inArray(publicationTags.tagId, [...tagIds]))),
+                    .where(and(eq(publicationTags.publicationId, publications.id), inList(publicationTags.tagId, [...tagIds]))),
                 )
               : undefined,
           ),
