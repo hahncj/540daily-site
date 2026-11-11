@@ -54,7 +54,7 @@ Other D1 differences checked and found fine: single-statement guards (`onConflic
 | A14 | Pass | `editor.test`, `editor.spec` | — |
 | A15 | Pass | `migrations.test`, fresh local migration, `npm run check`, build, Playwright | No AI key used anywhere |
 | A16 | Removed | Backup export/restore deferred by the owner on 2026-11-06 | — |
-| A17 | Partly run | [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) | Sign-in, MCP connection, key publish, upload, and visibility checks on the live site are **pending** |
+| A17 | Partly run; rest skipped by the owner | [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) | Read-only live checks ran. Sign-in, MCP connection, key publish, upload, and visibility checks on the live site were **skipped** by the owner (2026-11-11) and are not verified live |
 
 ## 5. Not run
 
@@ -75,6 +75,6 @@ Other D1 differences checked and found fine: single-statement guards (`onConflic
 - An independent review subagent checked the docs and code changes against REQUIREMENTS.md. It found no code bugs; its doc corrections (upload completion and status examples, which failures use up an upload URL, MCP-level 401/429 shapes, two wrong labels, the checklist's read-only claim) are applied.
 - `/code-review` on the branch diff found five items (duplicate error-page titles, the editor's separate date formatter, a test that could leave owners disabled after a failure, unfilled report placeholders, an unneeded export). All fixed.
 
-## 8. Owner steps left (Stage 5)
+## 8. Stage 5 (closed 2026-11-11)
 
-Follow [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) sections 1–6 and mark each line. In short: confirm secrets and the private bucket in the dashboard, confirm migrations are current, then sign in, invite, connect an MCP client, publish with a key, upload an image, and unpublish/restore a labeled test story.
+Stage 4 merged (PR #12) and deployed through Workers Builds. After the deploy: `/health` ok, the new error-page title is live, and production migrations are current (read-only check). The owner chose not to run the remaining live checks; they are marked "Skipped" in [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) and can be run later from the same steps.
