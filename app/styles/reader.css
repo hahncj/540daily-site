@@ -10,7 +10,7 @@
 .bookmark__button {
   min-height: 2.25rem;
   padding: var(--space-1) var(--space-3);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 .bookmark__button[aria-pressed="true"] {
   border-color: var(--color-accent);
@@ -18,7 +18,7 @@
 }
 .bookmark__error {
   color: var(--color-danger);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .publication__actions {
@@ -101,7 +101,7 @@
 
 .theme-toggle__error {
   color: var(--color-danger);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   margin-left: var(--space-2);
 }
 .link-button {

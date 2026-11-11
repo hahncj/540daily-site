@@ -65,7 +65,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
   const errorFor = (field: Field) => errors?.[field]?.join(" ");
 
   return (
-    <section aria-labelledby="page-title">
+    <section aria-labelledby="page-title" className="list-page">
       <h1 id="page-title">Search</h1>
       <Form ref={formRef} method="get" action="/search" className="search-form panel" role="search" aria-label="Publications">
         <div className="field field--wide">

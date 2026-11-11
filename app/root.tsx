@@ -17,6 +17,14 @@ import { SignOutButton } from "./components/sign-out-button";
 import { ThemeToggle, themeBootScript, type ThemeChoice } from "./components/theme-toggle";
 import { servicesContext } from "./context";
 import { getViewer } from "./session.server";
+import { SITE_TIME_ZONE } from "../server/core/dates";
+import appleTouchIcon from "./assets/brand/apple-touch-icon.png";
+import favicon32 from "./assets/brand/favicon-32.png";
+import favicon64 from "./assets/brand/favicon-64.png";
+import logo96 from "./assets/brand/logo-96.png";
+import "@fontsource-variable/literata/opsz.css";
+import "@fontsource-variable/literata/opsz-italic.css";
+import "@fontsource-variable/public-sans/wght.css";
 import "./styles/app.css";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -24,8 +32,21 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const viewer = await getViewer(request, services);
   // A signed-in member's saved theme wins over anything stored locally on this device.
   const theme: ThemeChoice = viewer ? await services.preferences.theme(viewer.userId) : "system";
-  return { viewer, theme };
+  return { viewer, theme, today: todayLabel(new Date()) };
 }
+
+const todayFormat = new Intl.DateTimeFormat("en-US", { timeZone: SITE_TIME_ZONE, weekday: "long", month: "long", day: "numeric" });
+
+/** "Wednesday, November 11" in the site's time zone, rendered on the server so it never mismatches. */
+function todayLabel(now: Date): string {
+  return todayFormat.format(now);
+}
+
+export const links: Route.LinksFunction = () => [
+  { rel: "icon", type: "image/png", sizes: "32x32", href: favicon32 },
+  { rel: "icon", type: "image/png", sizes: "64x64", href: favicon64 },
+  { rel: "apple-touch-icon", href: appleTouchIcon },
+];
 
 export type RootData = Awaited<ReturnType<typeof loader>>;
 
@@ -56,7 +77,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </main>
         <footer className="site-footer">
           <div className="site-footer__inner">
-            540 Daily publishes stories and reports from members and their research agents.
+            <p className="site-footer__about">
+              <img src={logo96} alt="" width={28} height={28} className="site-footer__logo" />
+              540 Daily publishes stories and reports from members and their research agents.
+            </p>
+            <nav aria-label="Footer">
+              <ul className="site-footer__links">
+                <li>
+                  <Link to="/categories">All categories</Link>
+                </li>
+                <li>
+                  <Link to="/search">Search</Link>
+                </li>
+              </ul>
+            </nav>
           </div>
         </footer>
         <ScrollRestoration />
@@ -72,9 +106,13 @@ function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link to="/" className="site-brand">
-          540 Daily
-        </Link>
+        <div className="site-masthead">
+          <Link to="/" className="site-brand">
+            <img src={logo96} alt="" width={40} height={40} className="site-brand__logo" />
+            <span className="site-brand__name">540 Daily</span>
+          </Link>
+          {data?.today ? <p className="site-date">{data.today}</p> : null}
+        </div>
         <nav className="site-nav" aria-label="Main">
           <ul>
             <li>

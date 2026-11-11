@@ -62,85 +62,89 @@ export default function Publication({ loaderData }: Route.ComponentProps) {
   const showUpdated = p.publishedAt && new Date(p.updatedAt).getTime() - new Date(p.publishedAt).getTime() > UPDATED_THRESHOLD_MS;
 
   return (
-    <article className="publication" aria-labelledby="page-title">
-      <header className="publication__header">
-        <p className="publication__kicker">
-          <span className={`type-label type-label--${p.type}`}>{TYPE_LABEL[p.type]}</span>
-          {" · "}
-          <Link to={`/categories/${p.category.slug}`}>{p.category.name}</Link>
-        </p>
-        <h1 id="page-title">{p.title}</h1>
-        <p className="publication__summary">{p.summary}</p>
-        <dl className="publication__meta">
-          <div>
-            <dt>By</dt>
-            <dd>{p.byline}</dd>
-          </div>
-          {p.publishedAt ? (
+    <div className="publication-page">
+      <article className={`publication publication--${p.type}`} aria-labelledby="page-title">
+        <header className="publication__header">
+          <p className="publication__kicker">
+            <span className={`type-label type-label--${p.type}`}>{TYPE_LABEL[p.type]}</span>
+            {" in "}
+            <Link to={`/categories/${p.category.slug}`}>{p.category.name}</Link>
+          </p>
+          <h1 id="page-title">{p.title}</h1>
+          <p className="publication__summary">{p.summary}</p>
+          <dl className="publication__meta">
             <div>
-              <dt>Published</dt>
-              <dd>
-                <time dateTime={isoString(p.publishedAt)}>{formatDateTime(p.publishedAt)}</time>
-              </dd>
+              <dt>By</dt>
+              <dd>{p.byline}</dd>
+            </div>
+            {p.publishedAt ? (
+              <div>
+                <dt>Published</dt>
+                <dd>
+                  <time dateTime={isoString(p.publishedAt)}>{formatDateTime(p.publishedAt)}</time>
+                </dd>
+              </div>
+            ) : null}
+            {showUpdated ? (
+              <div>
+                <dt>Updated</dt>
+                <dd>
+                  <time dateTime={isoString(p.updatedAt)}>{formatDateTime(p.updatedAt)}</time>
+                </dd>
+              </div>
+            ) : null}
+            {p.sourcePublishedAt ? (
+              <div>
+                <dt>Source date</dt>
+                <dd>
+                  <time dateTime={isoString(p.sourcePublishedAt)}>{formatDate(p.sourcePublishedAt)}</time>
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+          {savedIds ? (
+            <div className="publication__actions">
+              <BookmarkButton publicationId={p.id} title={p.title} saved={savedIds.includes(p.id)} />
             </div>
           ) : null}
-          {showUpdated ? (
-            <div>
-              <dt>Updated</dt>
-              <dd>
-                <time dateTime={isoString(p.updatedAt)}>{formatDateTime(p.updatedAt)}</time>
-              </dd>
-            </div>
-          ) : null}
-          {p.sourcePublishedAt ? (
-            <div>
-              <dt>Source date</dt>
-              <dd>
-                <time dateTime={isoString(p.sourcePublishedAt)}>{formatDate(p.sourcePublishedAt)}</time>
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-        {savedIds ? (
-          <div className="publication__actions">
-            <BookmarkButton publicationId={p.id} title={p.title} saved={savedIds.includes(p.id)} />
-          </div>
+        </header>
+
+        {/* Safe HTML from publications.renderBody: raw HTML is disabled and the output is allowlist-sanitized. */}
+        {bodyHtml ? <div className="prose" dangerouslySetInnerHTML={{ __html: bodyHtml }} /> : null}
+
+        {p.tags.length > 0 ? (
+          <section aria-labelledby="tags-title" className="publication__section">
+            <h2 id="tags-title">Tags</h2>
+            <ul className="tag-list">
+              {p.tags.map((t) => (
+                <li key={t.id} className="tag">
+                  {t.name}
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
-      </header>
 
-      {/* Safe HTML from publications.renderBody: raw HTML is disabled and the output is allowlist-sanitized. */}
-      {bodyHtml ? <div className="prose" dangerouslySetInnerHTML={{ __html: bodyHtml }} /> : null}
+        {p.sources.length > 0 ? (
+          <section aria-labelledby="sources-title" className="publication__section">
+            <h2 id="sources-title">Sources</h2>
+            <p className="muted small">Links supplied by the author. 540 Daily does not fetch or verify them.</p>
+            <ul className="source-list">
+              {p.sources.map((s, i) => (
+                <li key={`${i}-${s.url}`}>
+                  <a href={s.url} rel="nofollow noopener noreferrer ugc">
+                    {s.label || s.url}
+                  </a>
+                  {s.label ? <span className="source-list__host">{hostOf(s.url)}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
-      {p.tags.length > 0 ? (
-        <section aria-labelledby="tags-title" className="publication__section">
-          <h2 id="tags-title">Tags</h2>
-          <ul className="tag-list">
-            {p.tags.map((t) => (
-              <li key={t.id} className="tag">
-                {t.name}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      </article>
 
-      {p.sources.length > 0 ? (
-        <section aria-labelledby="sources-title" className="publication__section">
-          <h2 id="sources-title">Sources</h2>
-          <p className="muted small">Links supplied by the author. 540 Daily does not fetch or verify them.</p>
-          <ul className="source-list">
-            {p.sources.map((s, i) => (
-              <li key={`${i}-${s.url}`}>
-                <a href={s.url} rel="nofollow noopener noreferrer ugc">
-                  {s.label || s.url}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <section aria-labelledby="related-title" className="publication__section">
+      <section aria-labelledby="related-title" className="publication-related">
         <h2 id="related-title">More in {p.category.name}</h2>
         {related.length === 0 ? (
           <p className="muted">No other publications in {p.category.name} yet.</p>
@@ -148,6 +152,15 @@ export default function Publication({ loaderData }: Route.ComponentProps) {
           <PublicationList items={related} savedIds={savedIds} />
         )}
       </section>
-    </article>
+    </div>
   );
+}
+
+/** "example.com" from a source URL, so readers can see where a link goes before following it. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }

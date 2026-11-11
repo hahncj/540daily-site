@@ -54,7 +54,7 @@ export default function Category({ loaderData }: Route.ComponentProps) {
   const beyondLastPage = results.items.length === 0 && results.total > 0;
 
   return (
-    <section aria-labelledby="page-title">
+    <section aria-labelledby="page-title" className="list-page">
       <p className="breadcrumb">
         <Link to="/categories">Categories</Link>
       </p>

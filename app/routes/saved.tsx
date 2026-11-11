@@ -63,7 +63,7 @@ export default function Saved({ loaderData, actionData }: Route.ComponentProps) 
   }, [saved.total]);
 
   return (
-    <section aria-labelledby="page-title">
+    <section aria-labelledby="page-title" className="list-page">
       <h1 id="page-title" ref={headingRef} tabIndex={-1}>
         Saved
       </h1>
@@ -84,7 +84,7 @@ export default function Saved({ loaderData, actionData }: Route.ComponentProps) 
         <ul className="publication-list saved-list">
           {saved.items.map((entry) =>
             entry.kind === "available" ? (
-              <li key={entry.publicationId} className="publication-item">
+              <li key={entry.publicationId} className={`publication-item publication-item--${entry.item.type}`}>
                 <PublicationListEntry item={entry.item} headingLevel={2} showCategory saved />
               </li>
             ) : (
