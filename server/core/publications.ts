@@ -217,6 +217,7 @@ export type Revision = RevisionSummary & { content: PublicationContent };
 export type Page<T> = { items: T[]; total: number; page: number; pageSize: number };
 export const PAGE_SIZE = 20;
 export const PANEL_SIZE = 5;
+const HOUR_MS = 60 * 60 * 1000;
 export const RELATED_SIZE = 5;
 
 /** Canonical page path for a publication: `/publications/:id/:slug`. */
@@ -286,6 +287,11 @@ export interface PublicationsRepository {
   listPublished(filter: { categoryId?: string; type?: PublicationType; excludeId?: string; limit: number; offset: number; countTotal?: boolean }): Promise<{ items: PublicationListItem[]; total: number }>;
   /** With `tagIds`, only items carrying at least one of those tags. */
   latestPublishedPerCategory(categoryIds: readonly string[], perCategory: number, tagIds?: readonly string[]): Promise<Map<string, PublicationListItem[]>>;
+  /**
+   * Like `latestPublishedPerCategory`, over every category, counting only items published at or after
+   * `since`. Categories with no such item are absent. Map order: by each category's newest item, newest first.
+   */
+  recentPublishedPerCategory(filter: { since: Date; perCategory: number; tagIds?: readonly string[] }): Promise<Map<string, PublicationListItem[]>>;
   listAll(filter: { status?: PublicationStatus; creatorUserId?: string; limit: number; offset: number }): Promise<{ items: PublicationListItem[]; total: number }>;
 }
 
@@ -646,6 +652,18 @@ export function createPublications({ repo, attachments, markdown, audit, failure
      */
     latestPerCategory: (categoryIds: readonly string[], perCategory = PANEL_SIZE, tagIds?: readonly string[]) =>
       repo.latestPublishedPerCategory(categoryIds, perCategory, tagIds),
+
+    /**
+     * Home page panels: for every category with items published in the last `windowHours`, its newest
+     * items from that window (any of `tagIds`, when given). Ordered by each category's newest item.
+     */
+    recentPerCategory: (windowHours: number, tagIds?: readonly string[], perCategory = PANEL_SIZE) =>
+      repo.recentPublishedPerCategory({ since: new Date(now().getTime() - windowHours * HOUR_MS), perCategory, tagIds }),
+
+    /** The newest published items site-wide, for a home page with nothing recent. */
+    async newestPublished(limit = PANEL_SIZE): Promise<PublicationListItem[]> {
+      return (await repo.listPublished({ limit, offset: 0, countTotal: false })).items;
+    },
 
     /** Up to five published items from the same category, excluding this one, newest first. */
     async related(p: Pick<Publication, "id" | "category">): Promise<PublicationListItem[]> {

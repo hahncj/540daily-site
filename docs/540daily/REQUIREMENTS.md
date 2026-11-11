@@ -22,12 +22,12 @@ This document takes precedence over the technical design documents listed in sec
 - Invitation-only reader accounts using Google sign-in, with preferences saved across devices.
 - Shared public dashboard and personal dashboards, organized into category panels.
 - Panels show recent headlines and short summaries, with drill-down to category listings and full publications.
-- Readers choose and reorder personal category panels. Editors choose and order public homepage categories.
+- Home pages are dynamic: a category panel appears when the category has published content in the recent timeframe and is hidden when it has none. Readers set a preferred order for their own panels; editors set the preferred order for the public homepage.
 - Light and dark themes.
 - Stories and longer research reports, including daily briefings published as reports.
 - Markdown authoring with image and chart attachments uploaded to 540 Daily.
 - External agents publish automatically through both MCP and HTTP API. No editorial approval queue.
-- Each publication supplies a category; new categories are created automatically. New categories do not automatically appear on the public homepage.
+- Each publication supplies a category; new categories are created automatically. A category with recent published content appears on home pages automatically, after the preferred categories.
 - Agents act on behalf of the signed-in member who connected them, and create and update only that member's publications. Editors can create and edit publications directly, with Markdown preview.
 - Editor-only version history and restoration. Editors can unpublish and restore content, without permanent deletion at launch.
 - Source links are optional.
@@ -99,7 +99,8 @@ Default experience:
 - Five newest publications per panel; headline plus up to 240 characters of summary, date, and publication-type label. No invented sample stories in production.
 - Use original app publication time for recency; an edit does not move an old story to the top. Show updated time separately.
 - Category/search pages show 20 results per page, with stable ordering using timestamp and ID.
-- A member's home page follows the current public layout until they first change their panels; that change saves a personal layout starting from the public one. Later public layout changes do not overwrite it. Resetting goes back to following the public layout. New categories become available in the selector, without automatic insertion.
+- Home page panels (decided 2026-11-11, replacing the earlier fixed editor-chosen layout): a panel shows only when its category has at least one published item in the timeframe, and lists the five newest items from that timeframe. Panels follow the preferred order first; other categories with recent items follow, the most recently published first. At most 50 panels. The timeframe is the last 24 hours by default; signed-in members can choose 12 hours, 24 hours, 3 days, or 7 days in Settings, saved to their account. When nothing is published in the timeframe, show an empty-state note with the newest published items site-wide.
+- A member's home page follows the current public preferred order until they first change their panels; that change saves a personal order starting from the public one. Later public changes do not overwrite it. Resetting goes back to following the public order.
 - Preserve the earlier explicit-interest requirement using optional agent/editor-supplied tags for topics, teams, people, and companies. Readers can select known tags to filter their personal dashboard. Selected categories use OR matching; if tags are selected, match any selected tag within those categories. Do not infer interests or require agents to submit tags.
 - Related publications: up to five published items from the same category, excluding the current item, newest first. No AI similarity feature.
 - Theme defaults to the device preference. Save explicit choices to signed-in accounts; anonymous visitors may save theme locally. Anonymous theme switching is not a content-edit permission.
@@ -127,7 +128,7 @@ Field limits and metadata choices are defaults. Enforce the same schema for edit
 Defaults:
 
 - Normalize category/tag names with Unicode normalization, trimming, collapsed whitespace, and case-insensitive uniqueness. Preserve a readable display label; generate stable collision-safe slugs.
-- Seed Technology, Business, Finance, Sports, and Entertainment once. Initially select them for the public layout; show an empty state until real publications arrive. Editors can change selection and order. Categories are flat at launch.
+- Seed Technology, Business, Finance, Sports, and Entertainment once. Initially select them for the public preferred order; show an empty state until real publications arrive. Editors can change the preferred order. Categories are flat at launch.
 - Store submitted text, not fetched full-text copies of linked sources. Render source links when provided; do not fabricate sources or imply independent verification.
 - Submitted Markdown is untrusted. Sanitize output, disable raw HTML/scripts/iframes, validate link protocols, and allow inline images only through valid app attachment references. Ordinary external source links remain supported.
 - Display creator attribution from trusted account metadata, including the client or key label for agent-created items. Editor changes do not change the original creator.
@@ -159,8 +160,8 @@ Logical entities (defaults; the agent may refine physical tables without changin
 | Publication revision | Immutable content/status snapshot, actor, time, revision number |
 | Attachment | R2 key, MIME type, size, digest, alt text, uploader identity, lifecycle state |
 | Attachment references | Links to publication versions, retaining assets needed by historical revisions |
-| Preferences | User category ordering/visibility, selected tags, theme |
-| Homepage configuration | Editor-managed category order/visibility |
+| Preferences | User category preferred order, home page timeframe, selected tags, theme |
+| Homepage configuration | Editor-managed preferred category order (visibility follows recent content) |
 | Bookmark | User/publication composite uniqueness and saved time |
 | Submission receipt | Member ID and external ID, canonical create-payload hash, publication ID |
 | Audit event | Account/role/credential and publishing actions; no secrets or full request bodies |

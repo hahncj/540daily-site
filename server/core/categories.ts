@@ -1,5 +1,6 @@
 // Categories, tags, and the editor-managed public homepage layout.
-// Categories are created automatically from publications; new ones never join the homepage on their own.
+// Categories are created automatically from publications. Home pages show a category whenever it has
+// recent published items; the editor's layout (and a member's own panels) only set the preferred order.
 import { canEdit, type Actor } from "./actors";
 import type { Audit } from "./audit";
 import { fail, ok, type Result } from "./result";
@@ -28,6 +29,34 @@ export interface TagsRepository {
 }
 
 export const MAX_HOMEPAGE_PANELS = 50;
+
+/**
+ * Home page panels from a preferred order and the categories with recent items. Preferred categories
+ * that have recent items come first, in the preferred order; every other category with recent items
+ * follows in `recent`'s order (newest item first). Preferred categories with nothing recent are left
+ * out. At most `max` panels.
+ */
+export function arrangePanels<T extends { category: Category }>(
+  preferred: readonly Category[],
+  recent: ReadonlyMap<string, readonly T[]>,
+  max = MAX_HOMEPAGE_PANELS,
+): { category: Category; items: T[] }[] {
+  const out: { category: Category; items: T[] }[] = [];
+  const placed = new Set<string>();
+  for (const category of preferred) {
+    const items = recent.get(category.id);
+    if (!items?.length || placed.has(category.id)) continue;
+    placed.add(category.id);
+    out.push({ category, items: [...items] });
+  }
+  for (const [id, items] of recent) {
+    if (placed.has(id) || !items.length) continue;
+    placed.add(id);
+    const { name, slug } = items[0]!.category;
+    out.push({ category: { id, name, slug }, items: [...items] });
+  }
+  return out.slice(0, max);
+}
 
 export type Categories = ReturnType<typeof createCategories>;
 export type Homepage = ReturnType<typeof createHomepage>;

@@ -24,7 +24,9 @@ export async function seedTestData(env: Record<string, string>): Promise<SeedInf
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   const db = drizzle(sqlite, { schema });
-  let clock = new Date("2026-10-01T15:00:00.000Z").getTime();
+  // Items are published a few hours before the test run, so they count as recent on the home page.
+  const recentStart = Date.now() - 3 * 60 * 60 * 1000;
+  let clock = recentStart;
   const services = createServices({
     config: loadConfig(env, "node"),
     db,
@@ -65,7 +67,7 @@ export async function seedTestData(env: Record<string, string>): Promise<SeedInf
   // An old item, to show that date filters and old publications work.
   clock = new Date("2025-03-10T17:00:00.000Z").getTime();
   await publish({ type: "story", title: "Test data: archived pelican story", category: "Business" });
-  clock = new Date("2026-10-01T15:00:00.000Z").getTime();
+  clock = recentStart;
 
   for (let i = 1; i <= 6; i++) await publish({ type: "story", title: `Test data: technology story ${i}`, category: "Technology", tags: ["e2e"] });
   await publish({ type: "story", title: "Test data: business pelican update", category: "Business" });

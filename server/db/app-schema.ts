@@ -301,6 +301,8 @@ export const userPreferences = sqliteTable("user_preferences", {
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   theme: text("theme", { enum: THEMES }).notNull().default("system"),
+  /** How far back the home page looks for items, in hours. One of HOME_WINDOW_HOURS in server/core/preferences.ts. */
+  homeWindowHours: integer("home_window_hours").notNull().default(24),
   /** Set when the member first saves their own home page panels; cleared when they go back to the public layout. */
   layoutInitializedAt: timestamp("layout_initialized_at"),
   updatedAt: timestamp("updated_at").notNull(),

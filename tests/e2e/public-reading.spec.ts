@@ -24,15 +24,18 @@ for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`public pages (${colorScheme})`, () => {
     test.use({ colorScheme });
 
-    test("A1: homepage panels show the newest items and pass axe", async ({ page }) => {
+    test("A1: homepage panels show the newest recent items and pass axe", async ({ page }) => {
       await page.goto("/");
       const tech = page.getByRole("region", { name: "Technology" });
       await expect(tech.getByRole("listitem")).toHaveCount(5);
       await expect(tech.getByRole("link", { name: "Test data: pelican research report" })).toBeVisible();
       await expect(tech.getByRole("link", { name: "More in Technology" })).toBeVisible();
-      await expect(page.getByRole("region", { name: "Sports" }).getByText("Nothing published in Sports yet.")).toBeVisible();
-      // The new category is not on the homepage until an editor selects it.
-      await expect(page.getByRole("region", { name: "E2E Archive" })).toHaveCount(0);
+      // Sports has nothing from the last 24 hours, so it is hidden rather than shown empty.
+      await expect(page.getByRole("region", { name: "Sports" })).toHaveCount(0);
+      // A category no editor chose shows because it has recent items.
+      await expect(page.getByRole("region", { name: "E2E Archive" })).toBeVisible();
+      // The seeded 2025 story is too old for the homepage.
+      await expect(page.getByText("Test data: archived pelican story")).toHaveCount(0);
       await expect(page.getByText("Test data: unpublished walrus story")).toHaveCount(0);
       await expectNoHorizontalScroll(page);
       await expectAccessible(page);

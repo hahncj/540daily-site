@@ -180,7 +180,7 @@ describe("A14: editor creation, publication, editing, unpublish, history, restor
     const after = await services.publications.getPublic(id);
     expect(after).toMatchObject({ title: "Test editor story", revision: 7, status: "published" });
 
-    // Homepage: the new category is absent until an editor adds it; then reorder and remove.
+    // Homepage: the new category is not in the preferred order until an editor adds it; then reorder and remove.
     const fresh = await createViaForm(services, editor.cookie, { category: "Test Category", title: "Test new-category story" }, "publish");
     expect(await services.publications.getPublic(fresh)).not.toBeNull();
     const names = async () => (await services.homepage.layout()).map((c) => c.name);
@@ -194,7 +194,15 @@ describe("A14: editor creation, publication, editing, unpublish, history, restor
       return run(homepageRoute.action as never, services, post("/editor/homepage", editor.cookie, { intent, categoryId, order }));
     };
     expect((await page()).available.map((c) => c.name)).toEqual(["Test Category"]);
-    expect((await change("add", "Test Category")).data).toMatchObject({ ok: true, message: "Test Category added to the homepage at position 6." });
+    // Only categories with recent items show; the editor page marks the others hidden.
+    expect((await page()).layout.map((c) => [c.name, (c as { recent?: boolean }).recent])).toEqual([
+      ["Technology", true],
+      ["Business", false],
+      ["Finance", false],
+      ["Sports", false],
+      ["Entertainment", false],
+    ]);
+    expect((await change("add", "Test Category")).data).toMatchObject({ ok: true, message: "Test Category added to the preferred order at position 6." });
     expect((await change("up", "Test Category")).data).toMatchObject({ ok: true, message: "Test Category moved up to position 5 of 6.", focus: { intent: "up" } });
     expect(await names()).toEqual(["Technology", "Business", "Finance", "Sports", "Test Category", "Entertainment"]);
     await change("down", "Technology");
