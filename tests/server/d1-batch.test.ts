@@ -147,6 +147,33 @@ describe("layout and limits on D1", () => {
     expect((await services.homepage.setLayout(editor, before.map((c) => c.id))).ok).toBe(true);
   });
 
+  it("home page panels count only items inside the timeframe, and the timeframe saves", async () => {
+    // A clock years ahead, so items from other tests in this shared database are never "recent".
+    const clock = testClock("2030-01-01T12:00:00.000Z");
+    const timed = servicesOnD1(clock.now);
+    const editor = await memberActor(timed, "d1-window@example.test", "editor");
+    const create = async (category: string, tags: string[] = []) => {
+      clock.advance(60_000);
+      const out = await timed.publications.create(editor, storyInput({ category, tags }), { publish: true });
+      if (!out.ok) throw new Error(out.message);
+      return out.value.publication;
+    };
+    const old = await create("D1 Window Old");
+    clock.advance(30 * 60 * 60 * 1000);
+    const a = await create("D1 Window A", ["D1 window tag"]);
+    const b = await create("D1 Window B");
+    const day = await timed.publications.recentPerCategory(24);
+    expect([...day.keys()]).toEqual([b.category.id, a.category.id]);
+    expect([...(await timed.publications.recentPerCategory(72)).keys()]).toEqual([b.category.id, a.category.id, old.category.id]);
+    const tag = (await timed.tags.listWithPublished()).find((t) => t.name === "D1 window tag")!;
+    expect([...(await timed.publications.recentPerCategory(24, [tag.id])).keys()]).toEqual([a.category.id]);
+
+    const reader = await createMember(timed, "d1-window-reader@example.test", "reader");
+    expect((await timed.preferences.home(reader)).windowHours).toBe(24);
+    expect((await timed.preferences.setHomeWindow(reader, "72")).ok).toBe(true);
+    expect((await timed.preferences.home(reader)).windowHours).toBe(72);
+  });
+
   it("agent write limits return 429 once the shared counter is full", async () => {
     const frozen = testClock(new Date().toISOString());
     const limited = servicesOnD1(frozen.now, { ...config, rateLimits: { ...config.rateLimits, writes: 2 } });

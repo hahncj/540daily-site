@@ -46,36 +46,50 @@ test("A9: home page panels, interests, theme, and bookmarks follow the member to
   await page.goto("/");
   const publicOrder = await panelTitles(page).allTextContents();
   expect(publicOrder).toContain("Technology");
+  // A category with recent items shows even though no editor chose it.
+  expect(publicOrder).toContain(seed.archiveCategory.name);
   const member = await signInAs(context, baseURL!, "reader");
 
-  // Before any change, a member's home page is the public layout.
+  // Before any change, a member's home page is the public one.
   await page.goto("/");
   await expect(panelTitles(page)).toHaveText(publicOrder);
-  await expect(page.getByText("The public layout.")).toBeVisible();
+  await expect(page.getByText("Last 24 hours.", { exact: true })).toBeVisible();
 
   // Customize goes to Settings.
   await page.getByRole("link", { name: "Customize" }).click();
   await expect(page).toHaveURL(/\/settings#home-page$/);
   await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
-  await expect(page.getByText("Your home page follows the public layout.")).toBeVisible();
+  await expect(page.getByText("It follows the public order.")).toBeVisible();
+  const preferredNames = page.getByRole("list", { name: "Panel order" }).locator(".layout-item__name");
+  const settingsOrder = (await preferredNames.allInnerTexts()).map((n) => n.replace(/^\d+\.\s*/, ""));
 
   // Keyboard reordering keeps focus on the moved panel's button.
-  const first = publicOrder[0]!;
+  const first = settingsOrder[0]!;
   await page.getByRole("button", { name: `Move down ${first}`, exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: `${first} moved down to position 2` })).toBeAttached();
   await expect(page.getByRole("button", { name: `Move down ${first}`, exact: true })).toBeFocused();
-  await expect(page.getByText("Your home page uses your own panels.")).toBeVisible();
+  await expect(page.getByText("Your panels below come first, in your order.")).toBeVisible();
 
-  // Remove one panel and add a category that is not on the public homepage.
-  const removed = publicOrder.find((n) => n !== "Technology" && n !== first)!;
+  // Remove one panel and add a category that is not in the public order.
+  const removed = settingsOrder.find((n) => n !== "Technology" && n !== first)!;
   await page.getByRole("button", { name: `Remove ${removed} from my home page` }).click();
   await expect(page.getByRole("status").filter({ hasText: `${removed} removed from your home page.` })).toBeAttached();
   await page.getByRole("button", { name: `Add ${seed.archiveCategory.name} to my home page` }).click();
   await expect(page.getByRole("status").filter({ hasText: `${seed.archiveCategory.name} added` })).toBeAttached();
-  const expectedOrder = [publicOrder[1]!, first, ...publicOrder.slice(2)].filter((n) => n !== removed).concat(seed.archiveCategory.name);
+  const expectedOrder = [settingsOrder[1]!, first, ...settingsOrder.slice(2)].filter((n) => n !== removed).concat(seed.archiveCategory.name);
+  await expect(preferredNames).toHaveText(expectedOrder.map((n, i) => `${i + 1}. ${n}`));
+
+  // The home page puts the member's categories with recent items first, in their order; the rest follow.
+  await page.goto("/");
+  const shown = await panelTitles(page).allTextContents();
+  const preferredShown = expectedOrder.filter((n) => publicOrder.includes(n));
+  expect(shown.slice(0, preferredShown.length)).toEqual(preferredShown);
+  expect([...shown].sort()).toEqual([...publicOrder].sort());
+  await expect(page.getByText("Last 24 hours, in your own panel order.")).toBeVisible();
 
   // Interest filter: only items tagged "e2e" (the six seeded technology stories) remain.
+  await page.goto("/settings");
   await page.getByRole("checkbox", { name: "e2e" }).check();
   await page.getByRole("button", { name: "Save interests" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Interests saved: e2e." })).toBeAttached();
@@ -86,15 +100,15 @@ test("A9: home page panels, interests, theme, and bookmarks follow the member to
   });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
-  // The home page shows the member's own panels, filtered.
+  // The home page is filtered: categories with nothing matching are hidden.
   await page.goto("/");
-  await expect(panelTitles(page)).toHaveText(expectedOrder);
-  await expect(page.getByText("Showing only items tagged e2e.")).toBeVisible();
+  await expect(panelTitles(page)).toHaveText(["Technology"]);
+  await expect(page.getByText("Last 24 hours, only items tagged e2e.")).toBeVisible();
   const tech = page.getByRole("region", { name: "Technology" });
   await expect(tech.getByRole("link", { name: seed.visibleReport.title })).toHaveCount(0);
   await expect(tech.getByRole("listitem")).toHaveCount(5);
   await expect(tech.getByRole("heading", { name: /^Test data: technology story \d$/ })).toHaveCount(5);
-  await expect(page.getByRole("region", { name: seed.archiveCategory.name }).getByText("Nothing in E2E Archive matches your interests yet.")).toBeVisible();
+  await expect(page.getByRole("region", { name: seed.archiveCategory.name })).toHaveCount(0);
 
   // Bookmark from the detail page.
   await page.goto(seed.visibleReport.path);
@@ -112,9 +126,10 @@ test("A9: home page panels, interests, theme, and bookmarks follow the member to
     const p2 = await other.newPage();
     await p2.goto("/");
     await expect(p2.locator("html")).toHaveAttribute("data-theme", "dark");
-    await expect(panelTitles(p2)).toHaveText(expectedOrder);
-    await expect(p2.getByText("Showing only items tagged e2e.")).toBeVisible();
+    await expect(panelTitles(p2)).toHaveText(["Technology"]);
+    await expect(p2.getByText("Last 24 hours, only items tagged e2e.")).toBeVisible();
     await p2.goto("/settings");
+    await expect(p2.getByRole("list", { name: "Panel order" }).locator(".layout-item__name")).toHaveText(expectedOrder.map((n, i) => `${i + 1}. ${n}`));
     await expect(p2.getByRole("radio", { name: /^Dark/ })).toBeChecked();
     await p2.goto("/saved");
     await expect(p2.getByRole("link", { name: seed.visibleReport.title })).toBeVisible();

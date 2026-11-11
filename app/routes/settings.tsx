@@ -2,6 +2,7 @@ import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect, useRef } from "react";
 import { data, Form, Link, useLocation, useNavigation, useRouteLoaderData } from "react-router";
 import { moveCategory } from "../../server/core/categories";
+import { HOME_WINDOW_HOURS, homeWindowLabel } from "../../server/core/preferences";
 import { HTTP_STATUS } from "../../server/core/result";
 import { ThemePicker } from "../components/theme-picker";
 import { servicesContext } from "../context";
@@ -22,14 +23,14 @@ export function meta(_: Route.MetaArgs) {
 
 /**
  * Settings for everyone: Appearance (theme) for visitors and members, and for signed-in members
- * their home page panels and interest tags. Panel changes save the member's own layout; until then
- * their home page follows the public layout.
+ * their home page timeframe, preferred panel order, and interest tags. Panel changes save the
+ * member's own order; until then their home page follows the public order.
  */
 export async function loader({ request, context }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
   const viewer = await getViewer(request, services);
   if (!viewer) return { home: null };
-  const [{ panels, personal, interestTags }, categories, knownTags] = await Promise.all([
+  const [{ panels, personal, interestTags, windowHours }, categories, knownTags] = await Promise.all([
     homeLayout(services, viewer),
     addableCategories(services),
     services.tags.listWithPublished(),
@@ -41,6 +42,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   return {
     home: {
       personal,
+      windowHours,
+      windowChoices: HOME_WINDOW_HOURS.map((hours) => ({ hours, label: homeWindowLabel(hours) })),
       panels: panels.map(({ id, name }) => ({ id, name })),
       available: categories.filter((c) => !shown.has(c.id)).map(({ id, name }) => ({ id, name })),
       interestTags: interestTags.map(({ id, name }) => ({ id, name })),
@@ -51,7 +54,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 const PANEL_INTENTS = ["up", "down", "remove", "add", "reset"] as const;
 type PanelIntent = (typeof PANEL_INTENTS)[number];
-type Focus = { categoryId: string; intent: PanelIntent } | { target: "interests" } | { target: "panels" } | null;
+type Focus = { categoryId: string; intent: PanelIntent } | { target: "interests" } | { target: "panels" } | { target: "window" } | null;
 
 function failure(message: string, status: number) {
   return data({ ok: false as const, message, focus: null as Focus }, { status });
@@ -70,6 +73,12 @@ export async function action({ request, context }: Route.ActionArgs) {
     const result = await services.preferences.setTheme(viewer.userId, form.get("theme"));
     if (!result.ok) return failure(result.message, HTTP_STATUS[result.status]);
     return { ok: true as const, message: "Theme saved.", focus: null as Focus };
+  }
+
+  if (intent === "window") {
+    const result = await services.preferences.setHomeWindow(viewer.userId, String(form.get("hours") ?? ""));
+    if (!result.ok) return failure(result.message, HTTP_STATUS[result.status]);
+    return { ok: true as const, message: `Your home page now shows the last ${homeWindowLabel(result.value)}.`, focus: { target: "window" } as Focus };
   }
 
   if (intent === "tags") {
@@ -156,7 +165,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
 type HomeSettings = NonNullable<Route.ComponentProps["loaderData"]["home"]>;
 
 function HomePageSettings({ home, actionData }: { home: HomeSettings; actionData: Route.ComponentProps["actionData"] }) {
-  const { personal, panels, available, interestTags, tagChoices } = home;
+  const { personal, panels, available, interestTags, tagChoices, windowHours, windowChoices } = home;
   const busy = useNavigation().state !== "idle";
   const order = panels.map((p) => p.id).join(",");
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -168,7 +177,8 @@ function HomePageSettings({ home, actionData }: { home: HomeSettings; actionData
     if (!focus || busy) return;
     const root = sectionRef.current;
     if ("target" in focus) {
-      root?.querySelector<HTMLElement>(focus.target === "interests" ? "#interests-title" : "#panels-title")?.focus();
+      const heading = focus.target === "interests" ? "#interests-title" : focus.target === "window" ? "#window-title" : "#panels-title";
+      root?.querySelector<HTMLElement>(heading)?.focus();
       return;
     }
     const pick = (selector: string) => root?.querySelector<HTMLElement>(selector);
@@ -187,9 +197,10 @@ function HomePageSettings({ home, actionData }: { home: HomeSettings; actionData
   return (
     <div className="home-settings" ref={sectionRef}>
       <p className="muted">
+        Your home page shows every category with items published in your timeframe. Categories with nothing recent are hidden.{" "}
         {personal
-          ? "Your home page uses your own panels. Changes to the public layout don't affect it."
-          : "Your home page follows the public layout. Changing a panel below saves your own layout."}{" "}
+          ? "Your panels below come first, in your order. Changes to the public order don't affect it."
+          : "It follows the public order. Changing a panel below saves your own order."}{" "}
         These settings never change the public homepage.
       </p>
       <p className="visually-hidden" role="status">
@@ -206,9 +217,31 @@ function HomePageSettings({ home, actionData }: { home: HomeSettings; actionData
         </p>
       ) : null}
 
-      <h3 id="panels-title" tabIndex={-1}>
-        Panels
+      <h3 id="window-title" tabIndex={-1}>
+        Timeframe
       </h3>
+      <Form method="post" className="window-form" preventScrollReset>
+        <fieldset>
+          <legend>Show items published in the last:</legend>
+          <ul className="interest-list">
+            {windowChoices.map((c) => (
+              <li key={c.hours}>
+                <label>
+                  <input type="radio" name="hours" value={c.hours} defaultChecked={c.hours === windowHours} /> {c.label}
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+        <button type="submit" className="button button--primary" name="intent" value="window" disabled={busy}>
+          Save timeframe
+        </button>
+      </Form>
+
+      <h3 id="panels-title" tabIndex={-1}>
+        Panel order
+      </h3>
+      <p className="muted">These categories come first when they have recent items. Other categories with recent items follow, newest first.</p>
       {panels.length === 0 ? <p className="muted">No panels yet.</p> : null}
       <ol className="layout-list" aria-labelledby="panels-title">
         {panels.map((c, i) => (

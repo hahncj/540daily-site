@@ -106,7 +106,7 @@ test.describe("A14: editor workflow end to end", () => {
   test("keyboard users reorder homepage panels with move-up/down buttons", async ({ page, context, baseURL }) => {
     await signInAs(context, baseURL!, "editor");
     await page.goto("/editor/homepage");
-    const items = page.getByRole("list", { name: "On the homepage" }).getByRole("listitem");
+    const items = page.getByRole("list", { name: "Preferred order" }).getByRole("listitem");
     await expect(items.first()).toBeVisible();
     const names = await items.locator(".layout-item__name").allInnerTexts();
     const first = names[0]!.replace(/^\d+\.\s*/, "");

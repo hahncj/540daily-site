@@ -45,6 +45,8 @@ async function anotherSession(services: Services, userId: string) {
 
 type Dashboard = {
   personal: boolean;
+  /** The member's preferred panel order, as Settings lists it. */
+  order: Array<{ id: string; name: string }>;
   panels: Array<{ category: { id: string; name: string }; items: Array<{ id: string; title: string }> }>;
   available: Array<{ id: string; name: string }>;
   interestTags: Array<{ id: string; name: string }>;
@@ -59,14 +61,20 @@ async function dashboard(services: Services, cookie: string): Promise<Dashboard>
   expect(home.status).toBe(200);
   const settings = await run(settingsRoute.loader, services, get("/settings", cookie));
   expect(settings.status).toBe(200);
-  const h = home.data as Omit<Dashboard, "available" | "tagChoices">;
-  const s = (settings.data as { home: { personal: boolean; panels: Array<{ id: string }>; available: Dashboard["available"]; tagChoices: Dashboard["tagChoices"] } }).home;
-  // Settings lists the same panels, in the same order, as the home page shows.
-  expect(s.panels.map((p) => p.id)).toEqual(h.panels.map((p) => p.category.id));
+  const h = home.data as Omit<Dashboard, "order" | "available" | "tagChoices">;
+  const s = (settings.data as { home: { personal: boolean; panels: Dashboard["order"]; available: Dashboard["available"]; tagChoices: Dashboard["tagChoices"] } }).home;
+  // The home page shows the preferred categories that have recent items first, in Settings' order.
+  const preferred = s.panels.map((p) => p.id);
+  const shown = h.panels.map((p) => p.category.id);
+  const shownPreferred = shown.filter((id) => preferred.includes(id));
+  expect(shown.slice(0, shownPreferred.length)).toEqual(preferred.filter((id) => shownPreferred.includes(id)));
   expect(s.personal).toBe(h.personal);
-  return { ...h, available: s.available, tagChoices: s.tagChoices };
+  return { ...h, order: s.panels, available: s.available, tagChoices: s.tagChoices };
 }
-const panelNames = (d: Dashboard) => d.panels.map((p) => p.category.name);
+/** The member's preferred panel order. */
+const panelNames = (d: Dashboard) => d.order.map((c) => c.name);
+/** The panels the home page actually shows. */
+const shownNames = (d: Dashboard) => d.panels.map((p) => p.category.name);
 
 function dashboardAction(services: Services, cookie: string, fields: Fields) {
   return run(settingsRoute.action as never, services, post("/settings", cookie, fields));
@@ -74,7 +82,7 @@ function dashboardAction(services: Services, cookie: string, fields: Fields) {
 
 async function movePanel(services: Services, cookie: string, intent: string, categoryId: string) {
   const d = await dashboard(services, cookie);
-  return dashboardAction(services, cookie, { intent, categoryId, order: d.panels.map((p) => p.category.id).join(",") });
+  return dashboardAction(services, cookie, { intent, categoryId, order: d.order.map((c) => c.id).join(",") });
 }
 
 async function saved(services: Services, cookie: string) {
@@ -179,7 +187,7 @@ describe("A9: personal home page", () => {
     const { services, id, editor } = await setup();
     const reader = await sessionCookieFor(services, "reader@example.test");
     const d = await dashboard(services, reader.cookie);
-    const stale = d.panels.map((p) => p.category.id).join(",");
+    const stale = d.order.map((c) => c.id).join(",");
     await movePanel(services, reader.cookie, "remove", id("Sports"));
     const r = await dashboardAction(services, reader.cookie, { intent: "down", categoryId: id("Technology"), order: stale });
     expect(r.status).toBe(409);
@@ -191,7 +199,7 @@ describe("A9: personal home page", () => {
     const after = await dashboard(services, reader.cookie);
     expect(after.available.map((c) => c.name)).not.toContain("Secret Drafts");
     const secretId = (await services.categories.listAll()).find((c) => c.name === "Secret Drafts")!.id;
-    const add = await dashboardAction(services, reader.cookie, { intent: "add", categoryId: secretId, order: after.panels.map((p) => p.category.id).join(",") });
+    const add = await dashboardAction(services, reader.cookie, { intent: "add", categoryId: secretId, order: after.order.map((c) => c.id).join(",") });
     expect(add.status).toBe(422);
   });
 
@@ -204,8 +212,8 @@ describe("A9: personal home page", () => {
     clock.advance(60_000);
     const chip = await publish(services, editor, storyInput({ category: "Technology", title: "Test data: chip story", tags: ["Chips", "Cubs"] }));
     clock.advance(60_000);
-    // Tagged, but in a category that is not on the dashboard: never shown.
-    await publish(services, editor, storyInput({ category: "Weather", title: "Test data: weather story", tags: ["Cubs"] }));
+    // Tagged, in a category the member never chose: it still shows, after the preferred ones.
+    const weather = await publish(services, editor, storyInput({ category: "Weather", title: "Test data: weather story", tags: ["Cubs"] }));
 
     const reader = await sessionCookieFor(services, "reader@example.test");
     const before = await dashboard(services, reader.cookie);
@@ -216,7 +224,9 @@ describe("A9: personal home page", () => {
     expect(r.status).toBe(200);
     const filtered = await dashboard(services, reader.cookie);
     const byPanel = Object.fromEntries(filtered.panels.map((p) => [p.category.name, p.items.map((i) => i.id)]));
-    expect(byPanel).toEqual({ Technology: [chip.id], Science: [], Sports: [sox.id, cubs.id] });
+    expect(byPanel).toEqual({ Technology: [chip.id], Sports: [sox.id, cubs.id], Weather: [weather.id] });
+    // Science has nothing matching, so it is hidden.
+    expect(shownNames(filtered)).toEqual(["Technology", "Sports", "Weather"]);
 
     // Saved on the account: another device sees the same filter.
     const otherDevice = await anotherSession(services, reader.userId);
@@ -337,6 +347,46 @@ describe("A9: bookmarks", () => {
       .values(Array.from({ length: MAX_BOOKMARKS }, (_, i) => ({ userId: reader.userId, publicationId: `test-fake-${i}`, createdAt })));
     services.sqlite.pragma("foreign_keys = ON");
     expect((await bookmark(services, reader.cookie, "save", stories.Science!.id)).status).toBe(422);
+  });
+});
+
+describe("home page timeframe", () => {
+  it("defaults to 24 hours, saves a member's choice across devices, and refuses other values", async () => {
+    const { services, editor, clock } = await setup();
+    // Setup's stories are now two days old; only a new Health story is recent.
+    clock.advance(48 * 60 * 60 * 1000);
+    await publish(services, editor, storyInput({ category: "Health", title: "Test data: Health story" }));
+    const reader = await sessionCookieFor(services, "reader@example.test");
+
+    const visitor = (await run(homeLoader, services, get("/"))).data as Dashboard & { windowLabel: string };
+    expect(visitor.windowLabel).toBe("24 hours");
+    expect(visitor.panels.map((p) => p.category.name)).toEqual(["Health"]);
+    const first = await dashboard(services, reader.cookie);
+    expect(shownNames(first)).toEqual(["Health"]);
+    // Preferred categories with nothing recent stay in the member's order, ready for their next item.
+    expect(panelNames(first)).toEqual(["Technology", "Science", "Sports"]);
+
+    const saved = await dashboardAction(services, reader.cookie, { intent: "window", hours: "72" });
+    expect(saved.data).toMatchObject({ ok: true, message: "Your home page now shows the last 3 days." });
+    const otherDevice = await anotherSession(services, reader.userId);
+    expect(shownNames(await dashboard(services, otherDevice))).toEqual(["Technology", "Science", "Sports", "Health"]);
+    const settings = await run(settingsRoute.loader, services, get("/settings", otherDevice));
+    expect((settings.data as { home: { windowHours: number } }).home.windowHours).toBe(72);
+    // The visitor's homepage is unchanged.
+    expect(((await run(homeLoader, services, get("/"))).data as Dashboard).panels.map((p) => p.category.name)).toEqual(["Health"]);
+
+    for (const hours of ["0", "25", "-24", "abc", ""]) {
+      expect((await dashboardAction(services, reader.cookie, { intent: "window", hours })).status).toBe(422);
+    }
+    expect((await services.preferences.home(reader.userId)).windowHours).toBe(72);
+  });
+
+  it("with nothing recent, lists the newest items site-wide instead of a blank page", async () => {
+    const { services, clock, stories } = await setup();
+    clock.advance(25 * 60 * 60 * 1000);
+    const home = (await run(homeLoader, services, get("/"))).data as Dashboard & { fallback: Array<{ id: string }> };
+    expect(home.panels).toEqual([]);
+    expect(home.fallback.map((i) => i.id)).toEqual([stories.Sports!.id, stories.Science!.id, stories.Technology!.id]);
   });
 });
 

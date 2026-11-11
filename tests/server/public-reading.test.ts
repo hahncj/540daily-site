@@ -49,34 +49,49 @@ async function published(services: Services, input: Record<string, unknown> = st
 }
 
 describe("A1: anonymous visitors read public pages", () => {
-  it("home shows editor-chosen panels with the five newest published items each", async () => {
+  it("home shows only categories with items from the last 24 hours: preferred order first, then the rest newest first", async () => {
     const clock = testClock();
     const services = createTestServices({ now: clock.now });
     const editor = await memberActor(services, "editor@example.test");
-    const ids: string[] = [];
-    for (let i = 0; i < 7; i++) {
+    const publish = async (category: string) => {
       clock.advance(60_000);
-      const out = await services.publications.create(editor, storyInput({ category: "Technology" }), { publish: true });
+      const out = await services.publications.create(editor, storyInput({ category }), { publish: true });
       if (!out.ok) throw new Error(out.message);
-      ids.push(out.value.publication.id);
-    }
+      return out.value.publication.id;
+    };
+    const oldFinance = await publish("Finance");
+    clock.advance(25 * 60 * 60 * 1000);
+    const ids: string[] = [];
+    for (let i = 0; i < 7; i++) ids.push(await publish("Technology"));
+    await publish("Space Weather");
+    await publish("Deep Sea");
+    await publish("Business");
     const { status, data } = await run(homeLoader, services, get("/"));
     expect(status).toBe(200);
     const panels = (data as Panels).panels;
-    expect(panels.map((p) => p.category.name)).toEqual(["Technology", "Business", "Finance", "Sports", "Entertainment"]);
+    // Seeded order is Technology, Business, Finance, Sports, Entertainment. Finance's only item is over
+    // 24 hours old and Sports/Entertainment are empty, so they are hidden; new categories follow, newest first.
+    expect(panels.map((p) => p.category.name)).toEqual(["Technology", "Business", "Deep Sea", "Space Weather"]);
     expect(panels[0]!.items.map((i) => i.id)).toEqual(ids.slice(2).reverse());
-    expect(panels[1]!.items).toEqual([]);
+    expect(panels.flatMap((p) => p.items.map((i) => i.id))).not.toContain(oldFinance);
   });
 
-  it("a new category is listed in the directory but not on the homepage until an editor selects it", async () => {
-    const services = createTestServices();
+  it("a new category appears on the homepage with its first item and leaves once nothing is recent", async () => {
+    const clock = testClock();
+    const services = createTestServices({ now: clock.now });
     const { publication } = await published(services, storyInput({ category: "Space Weather" }));
-    expect(await homeIds(services)).not.toContain(publication.id);
+    expect(await homeIds(services)).toContain(publication.id);
     const { data } = await run(categoriesLoader, services, get("/categories"));
     expect((data as { categories: Array<{ slug: string; publishedCount: number }> }).categories).toEqual([
       expect.objectContaining({ slug: "space-weather", publishedCount: 1 }),
     ]);
     expect(await categoryIds(services, "space-weather")).toEqual([publication.id]);
+
+    clock.advance(24 * 60 * 60 * 1000 + 1);
+    const later = (await run(homeLoader, services, get("/"))).data as Panels & { fallback: Array<{ id: string }> };
+    expect(later.panels).toEqual([]);
+    // With nothing recent, the newest items site-wide are listed instead of a blank page.
+    expect(later.fallback.map((i) => i.id)).toEqual([publication.id]);
   });
 
   it("category pages filter by type and paginate 20 per page, newest first", async () => {

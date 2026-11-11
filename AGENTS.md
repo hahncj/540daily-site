@@ -64,6 +64,12 @@ UI redesign (header and home page) notes:
 - The main nav is Home, Categories, Search. Role pages (Editor, Homepage layout, Owner console), Saved, Account, Settings, and Sign out live in the avatar menu (`app/components/account-menu.tsx`). Visitors get a Settings gear instead.
 - There is no separate dashboard page: `/` shows a signed-in member's own panels and interest filter, and `/dashboard` redirects to `/`. `/settings` holds Appearance (everyone) and the home page panels and interests (members). A signed-in home page is sent with `Cache-Control: private, no-store`.
 
+Dynamic home page categories notes:
+
+- Home pages show a category only when it has items published in the timeframe (`publications.recentPerCategory`). The editor's homepage layout and a member's own panels are a preferred order, not a filter: `arrangePanels()` in `server/core/categories.ts` puts preferred categories first, then other recent ones newest first.
+- Timeframe: `user_preferences.home_window_hours` (migration `0002`), choices in `HOME_WINDOW_HOURS`; visitors always get 24 hours. With nothing recent, the home page lists `publications.newestPublished()`.
+- Playwright seed data is published a few hours before the run so it counts as recent.
+
 ## Document authority (read before building)
 
 1. [docs/540daily/BUILD_PROMPT.md](docs/540daily/BUILD_PROMPT.md): entry point and build workflow. [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.

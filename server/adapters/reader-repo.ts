@@ -32,6 +32,22 @@ export function createPreferencesRepository(db: Database): PreferencesRepository
         .onConflictDoUpdate({ target: userPreferences.userId, set: { theme, updatedAt: now } });
     },
 
+    async getHomeWindow(userId) {
+      const rows = await db
+        .select({ hours: userPreferences.homeWindowHours })
+        .from(userPreferences)
+        .where(eq(userPreferences.userId, userId))
+        .limit(1);
+      return rows[0]?.hours ?? null;
+    },
+
+    async setHomeWindow(userId, hours, now) {
+      await db
+        .insert(userPreferences)
+        .values({ userId, homeWindowHours: hours, updatedAt: now })
+        .onConflictDoUpdate({ target: userPreferences.userId, set: { homeWindowHours: hours, updatedAt: now } });
+    },
+
     async hasPersonalLayout(userId) {
       const rows = await db
         .select({ at: userPreferences.layoutInitializedAt })

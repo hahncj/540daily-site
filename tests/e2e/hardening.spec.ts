@@ -200,14 +200,14 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expect(page).toHaveURL(/\/$/);
     });
 
-    test("A12: a search with no matches and an empty panel explain themselves", async ({ page }) => {
+    test("A12: a search with no matches explains itself, and the homepage shows no empty panels", async ({ page }) => {
       await page.goto("/search?q=zzqxnomatchzzqx");
       await expect(page.locator("main")).toContainText(/no (results|publications|matches)/i);
       await expectAccessible(page);
 
       await page.goto("/");
-      const empty = page.locator(".category-row").filter({ has: page.getByRole("heading", { name: "Entertainment" }) });
-      await expect(empty).toContainText(/nothing|no /i);
+      await expect(page.locator(".category-row").first()).toBeVisible();
+      await expect(page.locator(".category-row--empty")).toHaveCount(0);
       await expectAccessible(page);
     });
 

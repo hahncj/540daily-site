@@ -77,7 +77,7 @@ Over the write or upload limits, MCP returns a normal tool result with `"status"
 | `title` | 1–200 characters |
 | `summary` | 1–1,000 characters, plain text |
 | `bodyMarkdown` | Required for reports, optional for stories. Up to 100,000 characters |
-| `category` | Display name, 1–80 characters. New categories are created automatically but do **not** appear on the public homepage until an editor adds them |
+| `category` | Display name, 1–80 characters. New categories are created automatically. A category appears on home pages whenever it has items published in the reader's timeframe (24 hours by default) |
 | `tags` | Optional, up to 20, each up to 60 characters |
 | `sources` | Optional, up to 20 `{ "url": "https://…", "label": "…" }`. Links are never fetched |
 | `attachmentIds` | Optional, up to 20. Every `attachment:ID` in the body is added automatically |

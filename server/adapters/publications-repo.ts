@@ -1,7 +1,7 @@
 // Drizzle implementation of PublicationsRepository. Multi-statement writes go through atomic()
 // (one D1 batch or one SQLite transaction). Statements in a batch cannot read each other's results,
 // so later statements use subselects and are guarded by the new revision row's ID.
-import { and, desc, eq, exists, inArray, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, exists, gte, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   fromSnapshot,
   toSnapshot,
@@ -65,6 +65,57 @@ export function createPublicationsRepository(db: Database): PublicationsReposito
     updatedAt: w.at,
     updatedByUserId: w.actor.userId,
   });
+
+  /**
+   * Up to `perCategory` newest published items per category, as one query. Limited to `categoryIds`
+   * and/or to items published at or after `since`. The map's insertion order is by each category's
+   * newest item, newest first.
+   */
+  async function newestPerCategory({
+    categoryIds,
+    since,
+    perCategory,
+    tagIds,
+  }: {
+    categoryIds?: readonly string[];
+    since?: Date;
+    perCategory: number;
+    tagIds?: readonly string[];
+  }) {
+    const out = new Map<string, ReturnType<typeof toListItem>[]>();
+    const ranked = db
+      .select({
+        id: publications.id,
+        rn: sql<number>`row_number() over (partition by ${publications.categoryId} order by ${publications.publishedAt} desc, ${publications.id} desc)`.as("rn"),
+      })
+      .from(publications)
+      .where(
+        and(
+          eq(publications.status, "published"),
+          categoryIds ? inList(publications.categoryId, [...categoryIds]) : undefined,
+          since ? gte(publications.publishedAt, since) : undefined,
+          tagIds && tagIds.length > 0
+            ? exists(
+                db
+                  .select({ one: sql`1` })
+                  .from(publicationTags)
+                  .where(and(eq(publicationTags.publicationId, publications.id), inList(publicationTags.tagId, [...tagIds]))),
+              )
+            : undefined,
+        ),
+      )
+      .as("ranked");
+    const rows = await selectListRows(db)
+      .innerJoin(ranked, eq(ranked.id, publications.id))
+      .where(lte(ranked.rn, perCategory))
+      .orderBy(desc(publications.publishedAt), desc(publications.id));
+    for (const item of await withTags(db, rows as unknown as ListRow[])) {
+      const list = out.get(item.category.id) ?? [];
+      list.push(item);
+      out.set(item.category.id, list);
+    }
+    return out;
+  }
 
   return {
     async get(id) {
@@ -288,40 +339,11 @@ export function createPublicationsRepository(db: Database): PublicationsReposito
     },
 
     async latestPublishedPerCategory(categoryIds, perCategory, tagIds) {
-      const out = new Map<string, ReturnType<typeof toListItem>[]>();
-      if (categoryIds.length === 0) return out;
-      const ranked = db
-        .select({
-          id: publications.id,
-          rn: sql<number>`row_number() over (partition by ${publications.categoryId} order by ${publications.publishedAt} desc, ${publications.id} desc)`.as("rn"),
-        })
-        .from(publications)
-        .where(
-          and(
-            eq(publications.status, "published"),
-            inList(publications.categoryId, [...categoryIds]),
-            tagIds && tagIds.length > 0
-              ? exists(
-                  db
-                    .select({ one: sql`1` })
-                    .from(publicationTags)
-                    .where(and(eq(publicationTags.publicationId, publications.id), inList(publicationTags.tagId, [...tagIds]))),
-                )
-              : undefined,
-          ),
-        )
-        .as("ranked");
-      const rows = await selectListRows(db)
-        .innerJoin(ranked, eq(ranked.id, publications.id))
-        .where(lte(ranked.rn, perCategory))
-        .orderBy(desc(publications.publishedAt), desc(publications.id));
-      for (const item of await withTags(db, rows as unknown as ListRow[])) {
-        const list = out.get(item.category.id) ?? [];
-        list.push(item);
-        out.set(item.category.id, list);
-      }
-      return out;
+      if (categoryIds.length === 0) return new Map();
+      return newestPerCategory({ categoryIds, perCategory, tagIds });
     },
+
+    recentPublishedPerCategory: ({ since, perCategory, tagIds }) => newestPerCategory({ since, perCategory, tagIds }),
 
     async listAll({ status, creatorUserId, limit, offset }) {
       const where = and(status ? eq(publications.status, status) : undefined, creatorUserId ? eq(publications.createdByUserId, creatorUserId) : undefined);

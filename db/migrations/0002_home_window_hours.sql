@@ -1,0 +1,1 @@
+ALTER TABLE `user_preferences` ADD `home_window_hours` integer DEFAULT 24 NOT NULL;

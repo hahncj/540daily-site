@@ -2,6 +2,7 @@ import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { useEffect, useRef } from "react";
 import { Form, data, useNavigation } from "react-router";
 import { moveCategory } from "../../server/core/categories";
+import { DEFAULT_HOME_WINDOW_HOURS, homeWindowLabel } from "../../server/core/preferences";
 import { HTTP_STATUS } from "../../server/core/result";
 import { EditorNav, ErrorNotice, editorLinks, NOINDEX_META } from "../components/editor/shared";
 import { servicesContext } from "../context";
@@ -21,10 +22,15 @@ export function meta(_: Route.MetaArgs) {
 export async function loader({ request, context }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
   await requireEditorPage(request, services);
-  const [layout, all] = await Promise.all([services.homepage.layout(), services.categories.listAll()]);
+  const [layout, all, recent] = await Promise.all([
+    services.homepage.layout(),
+    services.categories.listAll(),
+    services.publications.recentPerCategory(DEFAULT_HOME_WINDOW_HOURS, undefined, 1),
+  ]);
   const shown = new Set(layout.map((c) => c.id));
   return {
-    layout: layout.map(({ id, name }) => ({ id, name })),
+    windowLabel: homeWindowLabel(DEFAULT_HOME_WINDOW_HOURS),
+    layout: layout.map(({ id, name }) => ({ id, name, recent: recent.has(id) })),
     available: all.filter((c) => !shown.has(c.id)).map(({ id, name }) => ({ id, name })),
   };
 }
@@ -58,15 +64,15 @@ export async function action({ request, context }: Route.ActionArgs) {
   const position = next.indexOf(categoryId) + 1;
   const message =
     intent === "remove"
-      ? `${name} removed from the homepage.`
+      ? `${name} removed from the preferred order.`
       : intent === "add"
-        ? `${name} added to the homepage at position ${position}.`
+        ? `${name} added to the preferred order at position ${position}.`
         : `${name} moved ${intent} to position ${position} of ${next.length}.`;
   return { ok: true as const, message, focus: { categoryId, intent } };
 }
 
 export default function HomepageLayout({ loaderData, actionData }: Route.ComponentProps) {
-  const { layout, available } = loaderData;
+  const { layout, available, windowLabel } = loaderData;
   const busy = useNavigation().state !== "idle";
   const order = layout.map((c) => c.id).join(",");
   const listRef = useRef<HTMLElement>(null);
@@ -93,7 +99,10 @@ export default function HomepageLayout({ loaderData, actionData }: Route.Compone
     <section aria-labelledby="page-title" className="editor" ref={listRef}>
       <EditorNav />
       <h1 id="page-title">Homepage layout</h1>
-      <p className="muted">Choose which categories appear as panels on the public homepage, and in what order. New categories are never added automatically.</p>
+      <p className="muted">
+        The public homepage shows every category with items published in the last {windowLabel}. Categories listed here come first, in this
+        order; other categories with recent items follow, newest first. A listed category with nothing recent is hidden until it gets a new item.
+      </p>
       <p className="visually-hidden" role="status">
         {actionData?.ok ? actionData.message : ""}
       </p>
@@ -105,9 +114,9 @@ export default function HomepageLayout({ loaderData, actionData }: Route.Compone
       <ErrorNotice message={actionData && !actionData.ok ? actionData.message : null} />
 
       <h2 id="shown-title" tabIndex={-1}>
-        On the homepage
+        Preferred order
       </h2>
-      {layout.length === 0 ? <p className="notice">No categories are on the homepage. Visitors see an empty state until you add one.</p> : null}
+      {layout.length === 0 ? <p className="notice">No preferred order. The homepage lists categories with recent items, newest first.</p> : null}
       <ol className="layout-list" aria-labelledby="shown-title">
         {layout.map((c, i) => (
           <li key={c.id} className="layout-item">
@@ -116,6 +125,7 @@ export default function HomepageLayout({ loaderData, actionData }: Route.Compone
                 {i + 1}.
               </span>{" "}
               {c.name}
+              {c.recent ? null : <span className="muted"> (hidden: nothing in the last {windowLabel})</span>}
             </span>
             <Form method="post" className="layout-item__actions">
               <input type="hidden" name="order" value={order} />
@@ -135,7 +145,7 @@ export default function HomepageLayout({ loaderData, actionData }: Route.Compone
                 Move down<span className="visually-hidden"> {c.name}</span>
               </button>
               <button type="submit" className="button" name="intent" value="remove" data-category={c.id} data-intent="remove" disabled={busy}>
-                Remove<span className="visually-hidden"> {c.name} from the homepage</span>
+                Remove<span className="visually-hidden"> {c.name} from the preferred order</span>
               </button>
             </Form>
           </li>
@@ -145,7 +155,8 @@ export default function HomepageLayout({ loaderData, actionData }: Route.Compone
       <h2 id="available-title" tabIndex={-1}>
         Other categories
       </h2>
-      {available.length === 0 ? <p className="muted">Every category is on the homepage.</p> : null}
+      <p className="muted">These still show on the homepage when they have recent items, after the preferred ones.</p>
+      {available.length === 0 ? <p className="muted">Every category is in the preferred order.</p> : null}
       <ul className="layout-list" aria-labelledby="available-title">
         {available.map((c) => (
           <li key={c.id} className="layout-item">
@@ -154,7 +165,7 @@ export default function HomepageLayout({ loaderData, actionData }: Route.Compone
               <input type="hidden" name="order" value={order} />
               <input type="hidden" name="categoryId" value={c.id} />
               <button type="submit" className="button" name="intent" value="add" data-category={c.id} data-intent="add" disabled={busy}>
-                Add<span className="visually-hidden"> {c.name} to the homepage</span>
+                Add<span className="visually-hidden"> {c.name} to the preferred order</span>
               </button>
             </Form>
           </li>
