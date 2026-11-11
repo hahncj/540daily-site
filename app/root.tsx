@@ -132,15 +132,29 @@ export default function App() {
   return <Outlet />;
 }
 
+function errorTitle(error: unknown): string {
+  if (!isRouteErrorResponse(error)) return "Something went wrong";
+  if (error.status === 404) return "Not found";
+  if (error.status === 401) return "Sign in required";
+  if (error.status === 403) return "No access";
+  return "Something went wrong";
+}
+
+/**
+ * Fallback page title. A matched route's own meta replaces it; it is used when no route matched (an
+ * unknown URL) or for pages without meta, so error pages always have a title (WCAG 2.4.2).
+ */
+export function meta({ error }: Route.MetaArgs) {
+  return [{ title: error ? `${errorTitle(error)} · 540 Daily` : "540 Daily" }];
+}
+
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let title = "Something went wrong";
+  const title = errorTitle(error);
   let message = "An unexpected error occurred. Please try again.";
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
-      title = "Not found";
       message = "We couldn't find that page.";
     } else if (error.status === 401 || error.status === 403) {
-      title = error.status === 401 ? "Sign in required" : "No access";
       message = typeof error.data === "string" && error.data ? error.data : message;
     }
   } else if (import.meta.env.DEV && error instanceof Error) {
