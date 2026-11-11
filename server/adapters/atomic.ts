@@ -1,3 +1,4 @@
+import { entityKind } from "drizzle-orm";
 import type { Database } from "./db";
 
 /**
@@ -7,7 +8,11 @@ import type { Database } from "./db";
 export async function atomic(db: Database, statements: Array<() => unknown>): Promise<unknown[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyDb = db as any;
-  if (typeof anyDb.batch === "function") return anyDb.batch(statements.map((build) => build()));
+  if (typeof anyDb.batch === "function") {
+    const queries = statements.map((build) => build());
+    for (const query of queries) prepareRawForD1Batch(anyDb.$client, query);
+    return anyDb.batch(queries);
+  }
   const results: unknown[] = [];
   anyDb.transaction(() => {
     for (const build of statements) {
@@ -16,6 +21,17 @@ export async function atomic(db: Database, statements: Array<() => unknown>): Pr
     }
   });
   return results;
+}
+
+/**
+ * Work around a drizzle-orm D1 bug: `db.run(sql\`...\`)` with parameters crashes inside `db.batch()`
+ * ("Cannot read properties of undefined (reading 'bind')") because raw queries carry no prepared `stmt`.
+ * Give each raw query the D1 statement drizzle expects; its result mapping is unchanged.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function prepareRawForD1Batch(client: { prepare(sql: string): unknown } | undefined, query: any) {
+  if (!client || !query || query.constructor?.[entityKind] !== "SQLiteRaw" || query.stmt) return;
+  query.stmt = client.prepare(query.getQuery().sql);
 }
 
 /** Affected rows: D1 `{ meta: { changes } }` or better-sqlite3 `{ changes }`. */

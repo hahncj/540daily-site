@@ -214,7 +214,8 @@ export function createPublicationsRepository(db: Database): PublicationsReposito
       const updateIndex = w.newCategory ? 1 + w.newTags.length : w.newTags.length;
       try {
         const results = await atomic(db, statements);
-        return changesOf(results[updateIndex]) === 1 ? "written" : "stale";
+        // > 0, not === 1: D1 also counts rows the search-index triggers change. A stale update changes nothing.
+        return changesOf(results[updateIndex]) > 0 ? "written" : "stale";
       } catch (error) {
         if (isConstraintError(error)) return "constraint";
         throw error;
