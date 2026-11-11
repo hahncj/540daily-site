@@ -169,7 +169,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await page.getByLabel("Summary").fill("Test summary (test data).");
       await page.getByLabel("Category").fill("Technology");
       await page.getByRole("button", { name: "Save draft" }).click();
-      await expect(page.getByText("Reports need a body.")).toBeVisible();
+      await expect(page.getByText("Reports need a body.", { exact: true })).toBeVisible();
       await expect(page.getByLabel("Title")).toHaveValue("Test report without a body");
       await expectNoAxeViolations(page);
 

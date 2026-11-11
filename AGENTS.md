@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Current state
 
-Stage 0 (Foundation) and Stage 1 (Publishing core) are built. Stage 0: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md).
+Stages 0–5 are done: the app is live at https://540daily.com. The owner skipped the live A17 sign-in/agent/upload checks (see docs/540daily/DEPLOYMENT_CHECKLIST.md). Stage 0 (Foundation) and Stage 1 (Publishing core) notes follow. Stage 0: tooling, config, the full schema and migrations, Better Auth with the membership gate, the app shell, stub routes for every page, `Services` with a placeholder for every planned service, and test helpers. Later stages and lanes fill in the placeholders; see [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md).
 
 Stage 0 notes for later lanes:
 
@@ -51,6 +51,13 @@ Lane 3B (Reader features) notes:
 - Save buttons: `PublicationList` takes `savedIds` (from `savedIdsFor()` in `app/reader.server.ts`; null when signed out hides the buttons). `BookmarkButton` posts to the `/saved` action; the Settings theme picker posts `intent=theme` to the `/settings` action. Both use `readerWrite()` so a refused write shows inline instead of the error page.
 - Bookmarks of unpublished or draft items list as `{ kind: "unavailable" }` with no title or content.
 - Playwright: `signInExisting()` adds a second session for a member (another device). Set `E2E_PORT` to run browser tests in two worktrees at once (default 4173).
+
+Stage 4 (Hardening) notes:
+
+- D1 allows at most 100 bound values per query. Never pass a list of IDs with `inArray()`; use `inList()` from `server/adapters/in-list.ts` (binds the list as one JSON value). `tests/server/d1-batch.test.ts` runs write and list-heavy paths on real D1 (Miniflare); add a case there for any new multi-step write.
+- Server and browser must render identical text or React throws away the server HTML (and the visitor's theme). Format dates only with `app/components/format.ts`; engines word dates differently (WebKit says "at").
+- `tests/e2e/hardening.spec.ts` holds the A12 keyboard, theme, error-state, and hydration checks. Its `tabTo()` uses Alt+Tab in WebKit, where plain Tab skips links.
+- Contract and operations docs: `docs/540daily/API_AND_MCP_CONTRACT.md`, `OPERATING_GUIDE.md`, `DEPLOYMENT_CHECKLIST.md`, `COMPLETION_REPORT.md`. Keep them in step with the code.
 
 UI redesign (header and home page) notes:
 
