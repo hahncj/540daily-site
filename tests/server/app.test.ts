@@ -46,7 +46,7 @@ describe("handleRequest dispatch", () => {
 
   it("marks private paths noindex and leaves public pages indexable", async () => {
     const services = createTestServices();
-    for (const path of ["/sign-in", "/consent", "/dashboard", "/saved", "/account", "/editor", "/editor/new", "/owner", "/api/v1/x", "/mcp"]) {
+    for (const path of ["/sign-in", "/consent", "/dashboard", "/settings", "/saved", "/account", "/editor", "/editor/new", "/owner", "/api/v1/x", "/mcp"]) {
       expect((await request(services, path)).headers.get("x-robots-tag"), path).toBe("noindex");
     }
     for (const path of ["/", "/categories", "/categories/technology", "/publications/abc", "/search", "/sitemap.xml"]) {

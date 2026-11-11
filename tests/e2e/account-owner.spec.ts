@@ -147,3 +147,39 @@ for (const colorScheme of ["light", "dark"] as const) {
     });
   });
 }
+
+test.describe("account menu", () => {
+  const expected: Record<TestRole, string[]> = {
+    reader: ["Saved", "Account", "Settings", "Sign out"],
+    editor: ["Saved", "Editor", "Homepage layout", "Account", "Settings", "Sign out"],
+    owner: ["Saved", "Editor", "Homepage layout", "Owner console", "Account", "Settings", "Sign out"],
+  };
+  for (const role of ["reader", "editor", "owner"] as const) {
+    test(`${role}: role pages live in the menu, not the main nav`, async ({ page, context, baseURL }) => {
+      const member = await signInAs(context, baseURL!, role);
+      await page.goto("/");
+      const header = page.getByRole("banner");
+      await expect(header.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText(["Home", "Categories", "Search"]);
+
+      const button = header.getByRole("button", { name: `Account menu: ${member.name}` });
+      await expect(button).toHaveAttribute("aria-expanded", "false");
+      await button.click();
+      await expect(button).toHaveAttribute("aria-expanded", "true");
+      const panel = page.locator(".account-menu__panel");
+      await expect(panel.getByText(member.email)).toBeVisible();
+      await expect(panel.getByRole("link").or(panel.getByRole("button"))).toHaveText(expected[role]);
+      await expectNoAxeViolations(page);
+
+      // Escape closes it and returns focus to the button.
+      await page.keyboard.press("Escape");
+      await expect(panel).toBeHidden();
+      await expect(button).toBeFocused();
+
+      // Following a link closes it.
+      await button.click();
+      await panel.getByRole("link", { name: "Settings" }).click();
+      await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+      await expect(panel).toBeHidden();
+    });
+  }
+});

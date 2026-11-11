@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { requireRolePage, requireRoleWrite, safeNextPath } from "../../app/access.server";
 import { loader as editorLoader } from "../../app/routes/editor";
 import { loader as ownerLoader } from "../../app/routes/owner";
-import { loader as dashboardLoader } from "../../app/routes/dashboard";
+import { loader as savedLoader } from "../../app/routes/saved";
 import { isSameOriginWrite } from "../../server/same-origin";
 import { BASE_URL, createTestServices, sessionCookieFor } from "../helpers/services";
 import { run } from "../helpers/routes";
@@ -59,7 +59,7 @@ describe("role checks", () => {
     const owner = await sessionCookieFor(services, "owner2@example.test", "owner");
     const get = (path: string, cookie: string) => new Request(`${BASE_URL}${path}`, { headers: { cookie } });
 
-    expect((await run(dashboardLoader, services, get("/dashboard", reader.cookie))).status).toBe(200);
+    expect((await run(savedLoader, services, get("/saved", reader.cookie))).status).toBe(200);
     expect((await run(editorLoader, services, get("/editor", reader.cookie))).status).toBe(403);
     expect((await run(editorLoader, services, get("/editor", editor.cookie))).status).toBe(200);
     expect((await run(ownerLoader, services, get("/owner", editor.cookie))).status).toBe(403);

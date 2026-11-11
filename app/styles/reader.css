@@ -1,4 +1,4 @@
-/* ---- Reader features (lane 3B): bookmarks and the personal dashboard ---- */
+/* ---- Reader features: bookmarks and the Settings page (appearance, home page panels, interests) ---- */
 
 .bookmark {
   display: flex;
@@ -33,26 +33,112 @@
   border-left-color: var(--color-success);
 }
 
-.dashboard-settings {
+.settings {
+  max-width: var(--reading-width);
+}
+.settings-section {
   margin-top: var(--space-6);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
-.dashboard-settings h3 {
+.settings-section h2 {
+  margin-top: 0;
+}
+.settings-section h3 {
   margin-top: var(--space-6);
 }
-.dashboard-settings__reset {
+.home-settings__reset {
   margin-top: var(--space-3);
 }
 
-.dashboard-settings .layout-list {
+/* Theme picker: three cards, each with a small preview of the colors. */
+.theme-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.theme-picker legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+.theme-picker__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-2);
+}
+.theme-picker__option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+.theme-picker__option:hover {
+  border-color: var(--color-text-muted);
+}
+.theme-picker__option:has(input:checked) {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+.theme-picker__option:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+/* The real radio covers the whole card, invisibly, so clicks and taps anywhere on it choose it. */
+.theme-picker__option input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.theme-picker__swatch {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+}
+.theme-picker__option[data-choice="light"] .theme-picker__swatch {
+  background: linear-gradient(135deg, #fffdf8 50%, #b84a26 50%);
+}
+.theme-picker__option[data-choice="dark"] .theme-picker__swatch {
+  background: linear-gradient(135deg, #221e1a 50%, #e07a52 50%);
+}
+.theme-picker__option[data-choice="system"] .theme-picker__swatch {
+  background: linear-gradient(90deg, #fffdf8 50%, #221e1a 50%);
+}
+.theme-picker__text {
+  display: grid;
+}
+.theme-picker__label {
+  font-weight: 600;
+}
+.theme-picker__hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.theme-picker__note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+}
+
+.home-settings .layout-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: var(--space-2);
 }
-.dashboard-settings .layout-item {
+.home-settings .layout-item {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -63,11 +149,11 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
 }
-.dashboard-settings .layout-item__name {
+.home-settings .layout-item__name {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-.dashboard-settings .layout-item__actions {
+.home-settings .layout-item__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -99,10 +185,10 @@
   height: 1.1rem;
 }
 
-.theme-toggle__error {
+.theme-picker__error {
   color: var(--color-danger);
   font-size: var(--text-sm);
-  margin-left: var(--space-2);
+  margin: var(--space-2) 0 0;
 }
 .link-button {
   font: inherit;

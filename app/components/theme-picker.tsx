@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
-import "../styles/reader.css";
 import type { ThemeChoice } from "../../server/core/preferences";
 
 export type { ThemeChoice };
 export const THEME_STORAGE_KEY = "540daily.theme";
+
+const OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string; hint: string }> = [
+  { value: "system", label: "Auto", hint: "Match this device" },
+  { value: "light", label: "Light", hint: "Always light" },
+  { value: "dark", label: "Dark", hint: "Always dark" },
+];
 
 function readStoredTheme(): ThemeChoice | null {
   try {
@@ -21,11 +26,11 @@ function applyTheme(theme: ThemeChoice) {
 }
 
 /**
- * Theme switcher. Anonymous visitors keep their choice in localStorage on this device. A signed-in
- * member's choice is saved to their account (through the dashboard action), so it follows them across
- * devices. Switching the theme is never a content-edit permission.
+ * Appearance choice on the Settings page. Visitors keep their choice in localStorage on this device.
+ * A signed-in member's choice is saved to their account (through the settings action), so it follows
+ * them across devices. Switching the theme is never a content-edit permission.
  */
-export function ThemeToggle({ initial, signedIn }: { initial: ThemeChoice; signedIn: boolean }) {
+export function ThemePicker({ initial, signedIn }: { initial: ThemeChoice; signedIn: boolean }) {
   const [theme, setTheme] = useState<ThemeChoice>(initial);
   const fetcher = useFetcher<{ ok: boolean; message?: string }>();
 
@@ -38,7 +43,7 @@ export function ThemeToggle({ initial, signedIn }: { initial: ThemeChoice; signe
     setTheme(next);
     applyTheme(next);
     if (signedIn) {
-      fetcher.submit({ intent: "theme", theme: next }, { method: "post", action: "/dashboard" });
+      fetcher.submit({ intent: "theme", theme: next }, { method: "post", action: "/settings" });
       return;
     }
     try {
@@ -51,27 +56,30 @@ export function ThemeToggle({ initial, signedIn }: { initial: ThemeChoice; signe
   const failed = signedIn && fetcher.state === "idle" && fetcher.data && !fetcher.data.ok;
 
   return (
-    <span className="theme-toggle">
-      <label className="theme-toggle__control">
-        <svg className="theme-toggle__icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-          <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor" />
-        </svg>
-        <select aria-label="Color theme" value={theme} onChange={(e) => choose(e.currentTarget.value as ThemeChoice)}>
-          <option value="system">Auto</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </label>
+    <fieldset className="theme-picker">
+      <legend>Color theme</legend>
+      <div className="theme-picker__options">
+        {OPTIONS.map((o) => (
+          <label key={o.value} className="theme-picker__option" data-choice={o.value}>
+            <input type="radio" name="theme" value={o.value} checked={theme === o.value} onChange={() => choose(o.value)} />
+            <span className="theme-picker__swatch" aria-hidden="true" />
+            <span className="theme-picker__text">
+              <span className="theme-picker__label">{o.label}</span>
+              <span className="theme-picker__hint">{o.hint}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className="theme-picker__note muted">{signedIn ? "Saved to your account, so it follows you to other devices." : "Saved on this device."}</p>
       {failed ? (
-        <span className="theme-toggle__error" role="alert">
+        <p className="theme-picker__error" role="alert">
           Theme not saved.{" "}
           <button type="button" className="link-button" onClick={() => choose(theme)}>
             Retry
           </button>
-        </span>
+        </p>
       ) : null}
-    </span>
+    </fieldset>
   );
 }
 

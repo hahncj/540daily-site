@@ -2,14 +2,14 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { BookmarksRepository } from "../core/bookmarks";
 import type { PreferencesRepository } from "../core/preferences";
-import { bookmarks, categories, homepagePanels, publications, tags, userCategoryPanels, userInterestTags, userPreferences } from "../db/schema";
+import { bookmarks, categories, publications, tags, userCategoryPanels, userInterestTags, userPreferences } from "../db/schema";
 import { atomic } from "./atomic";
 import type { Database } from "./db";
 import { inList } from "./in-list";
 import { selectListRows, withTags, type ListRow } from "./publication-rows";
 
 export function createPreferencesRepository(db: Database): PreferencesRepository {
-  /** Create the preferences row if missing and mark the dashboard set up; keeps the theme and first set-up time. */
+  /** Create the preferences row if missing and mark the personal layout saved; keeps the theme and first save time. */
   const markInitialized = (userId: string, now: Date) => () =>
     db
       .insert(userPreferences)
@@ -32,22 +32,13 @@ export function createPreferencesRepository(db: Database): PreferencesRepository
         .onConflictDoUpdate({ target: userPreferences.userId, set: { theme, updatedAt: now } });
     },
 
-    async seedFromHomepage(userId, now) {
-      // Cheap read first: most visits find the dashboard already set up.
+    async hasPersonalLayout(userId) {
       const rows = await db
         .select({ at: userPreferences.layoutInitializedAt })
         .from(userPreferences)
         .where(eq(userPreferences.userId, userId))
         .limit(1);
-      if (rows[0]?.at) return;
-      // Both statements re-check inside the transaction, so two first visits at once seed only once.
-      await atomic(db, [
-        () =>
-          db.run(sql`insert or ignore into ${userCategoryPanels} (user_id, category_id, position)
-            select ${userId}, ${homepagePanels.categoryId}, ${homepagePanels.position} from ${homepagePanels}
-            where not exists (select 1 from ${userPreferences} where ${userPreferences.userId} = ${userId} and ${userPreferences.layoutInitializedAt} is not null)`),
-        markInitialized(userId, now),
-      ]);
+      return !!rows[0]?.at;
     },
 
     panels: (userId) =>
@@ -63,6 +54,13 @@ export function createPreferencesRepository(db: Database): PreferencesRepository
         () => db.delete(userCategoryPanels).where(eq(userCategoryPanels.userId, userId)),
         ...categoryIds.map((categoryId, position) => () => db.insert(userCategoryPanels).values({ userId, categoryId, position })),
         markInitialized(userId, now),
+      ]);
+    },
+
+    async clearPanels(userId, now) {
+      await atomic(db, [
+        () => db.delete(userCategoryPanels).where(eq(userCategoryPanels.userId, userId)),
+        () => db.update(userPreferences).set({ layoutInitializedAt: null, updatedAt: now }).where(eq(userPreferences.userId, userId)),
       ]);
     },
 

@@ -1,4 +1,4 @@
-// Lane 3B reader features in a real browser: A9 (personal dashboard, interests, theme, and bookmarks
+// Lane 3B reader features in a real browser: A9 (personal home page, interests, theme, and bookmarks
 // persist across devices without changing the public layout), A3 (readers cannot see each other's data),
 // keyboard panel reordering, the unavailable-bookmark placeholder, and axe checks in both themes.
 // Every member and publication here is labeled test data.
@@ -42,16 +42,22 @@ async function clickAndWaitForPost(page: Page, path: string, click: () => Promis
   expect((await answered).ok()).toBe(true);
 }
 
-test("A9: dashboard, interests, theme, and bookmarks follow the member to another device", async ({ page, context, baseURL, browser }, testInfo) => {
+test("A9: home page panels, interests, theme, and bookmarks follow the member to another device", async ({ page, context, baseURL, browser }, testInfo) => {
   await page.goto("/");
   const publicOrder = await panelTitles(page).allTextContents();
   expect(publicOrder).toContain("Technology");
   const member = await signInAs(context, baseURL!, "reader");
 
-  // First visit: the personal dashboard starts from the public layout.
-  await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { level: 1, name: "My dashboard" })).toBeVisible();
+  // Before any change, a member's home page is the public layout.
+  await page.goto("/");
   await expect(panelTitles(page)).toHaveText(publicOrder);
+  await expect(page.getByText("The public layout.")).toBeVisible();
+
+  // Customize goes to Settings.
+  await page.getByRole("link", { name: "Customize" }).click();
+  await expect(page).toHaveURL(/\/settings#home-page$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+  await expect(page.getByText("Your home page follows the public layout.")).toBeVisible();
 
   // Keyboard reordering keeps focus on the moved panel's button.
   const first = publicOrder[0]!;
@@ -59,31 +65,36 @@ test("A9: dashboard, interests, theme, and bookmarks follow the member to anothe
   await page.keyboard.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: `${first} moved down to position 2` })).toBeAttached();
   await expect(page.getByRole("button", { name: `Move down ${first}`, exact: true })).toBeFocused();
+  await expect(page.getByText("Your home page uses your own panels.")).toBeVisible();
 
   // Remove one panel and add a category that is not on the public homepage.
   const removed = publicOrder.find((n) => n !== "Technology" && n !== first)!;
-  await page.getByRole("button", { name: `Remove ${removed} from my dashboard` }).click();
-  await expect(page.getByRole("region", { name: removed, exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: `Add ${seed.archiveCategory.name} to my dashboard` }).click();
-  await expect(page.getByRole("region", { name: seed.archiveCategory.name })).toBeVisible();
+  await page.getByRole("button", { name: `Remove ${removed} from my home page` }).click();
+  await expect(page.getByRole("status").filter({ hasText: `${removed} removed from your home page.` })).toBeAttached();
+  await page.getByRole("button", { name: `Add ${seed.archiveCategory.name} to my home page` }).click();
+  await expect(page.getByRole("status").filter({ hasText: `${seed.archiveCategory.name} added` })).toBeAttached();
   const expectedOrder = [publicOrder[1]!, first, ...publicOrder.slice(2)].filter((n) => n !== removed).concat(seed.archiveCategory.name);
-  await expect(panelTitles(page)).toHaveText(expectedOrder);
 
   // Interest filter: only items tagged "e2e" (the six seeded technology stories) remain.
   await page.getByRole("checkbox", { name: "e2e" }).check();
   await page.getByRole("button", { name: "Save interests" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Interests saved: e2e." })).toBeAttached();
+
+  // Theme saved to the account.
+  await clickAndWaitForPost(page, "/settings", async () => {
+    await page.getByRole("radio", { name: /^Dark/ }).check();
+  });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+  // The home page shows the member's own panels, filtered.
+  await page.goto("/");
+  await expect(panelTitles(page)).toHaveText(expectedOrder);
   await expect(page.getByText("Showing only items tagged e2e.")).toBeVisible();
   const tech = page.getByRole("region", { name: "Technology" });
   await expect(tech.getByRole("link", { name: seed.visibleReport.title })).toHaveCount(0);
   await expect(tech.getByRole("listitem")).toHaveCount(5);
   await expect(tech.getByRole("heading", { name: /^Test data: technology story \d$/ })).toHaveCount(5);
   await expect(page.getByRole("region", { name: seed.archiveCategory.name }).getByText("Nothing in E2E Archive matches your interests yet.")).toBeVisible();
-
-  // Theme saved to the account.
-  await clickAndWaitForPost(page, "/dashboard", async () => {
-    await page.getByLabel("Color theme").selectOption("dark");
-  });
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
   // Bookmark from the detail page.
   await page.goto(seed.visibleReport.path);
@@ -99,11 +110,12 @@ test("A9: dashboard, interests, theme, and bookmarks follow the member to anothe
   try {
     await signInExisting(other, baseURL!, member.userId);
     const p2 = await other.newPage();
-    await p2.goto("/dashboard");
+    await p2.goto("/");
     await expect(p2.locator("html")).toHaveAttribute("data-theme", "dark");
-    await expect(p2.getByLabel("Color theme")).toHaveValue("dark");
     await expect(panelTitles(p2)).toHaveText(expectedOrder);
     await expect(p2.getByText("Showing only items tagged e2e.")).toBeVisible();
+    await p2.goto("/settings");
+    await expect(p2.getByRole("radio", { name: /^Dark/ })).toBeChecked();
     await p2.goto("/saved");
     await expect(p2.getByRole("link", { name: seed.visibleReport.title })).toBeVisible();
   } finally {
@@ -183,7 +195,7 @@ for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`reader pages (${colorScheme})`, () => {
     test.use({ colorScheme });
 
-    test("dashboard, saved list, and save buttons pass axe and fit the screen", async ({ page, context, baseURL }) => {
+    test("home page, settings, saved list, and save buttons pass axe and fit the screen", async ({ page, context, baseURL }) => {
       await signInAs(context, baseURL!, "reader");
       await page.goto(seed.visibleReport.path);
       await clickAndWaitForPost(page, "/saved", () => page.getByRole("button", { name: `Save ${seed.visibleReport.title}`, exact: true }).click());
@@ -193,8 +205,9 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expect(page.getByRole("button", { name: `Save ${seed.visibleReport.title}`, exact: true })).toHaveAttribute("aria-pressed", "true");
       await expectAccessible(page);
 
-      await page.goto("/dashboard");
-      await expect(page.getByRole("heading", { name: "Customize" })).toBeVisible();
+      await page.goto("/settings");
+      await expect(page.getByRole("heading", { name: "Your home page" })).toBeVisible();
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, nofollow");
       await expectAccessible(page);
 
       await page.goto("/saved");

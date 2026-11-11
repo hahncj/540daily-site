@@ -50,21 +50,18 @@ afterAll(async () => {
 });
 
 describe("multi-step writes on D1", () => {
-  it("first dashboard visit copies the homepage layout", async () => {
-    const userId = await createMember(services, "reader@example.test", "reader");
-    const { panels } = await services.preferences.dashboard(userId);
-    expect(panels.length).toBeGreaterThan(0);
-    const again = await services.preferences.dashboard(userId);
-    expect(again.panels).toEqual(panels);
-  });
-
-  it("dashboard panel and interest changes save", async () => {
+  it("home page panel and interest changes save, and reset forgets the personal layout", async () => {
     const userId = await createMember(services, "reader2@example.test", "reader");
-    const { panels } = await services.preferences.dashboard(userId);
-    const reordered = [...panels].reverse().map((p) => p.id);
+    expect((await services.preferences.home(userId)).panels).toBeNull();
+    const publicIds = (await services.homepage.layout()).map((c) => c.id);
+    expect(publicIds.length).toBeGreaterThan(0);
+    const reordered = [...publicIds].reverse();
     const saved = await services.preferences.setPanels(userId, reordered);
     expect(saved.ok && saved.value.map((p) => p.id)).toEqual(reordered);
+    expect((await services.preferences.home(userId)).panels?.map((p) => p.id)).toEqual(reordered);
     expect((await services.preferences.setInterestTags(userId, [])).ok).toBe(true);
+    await services.preferences.resetPanels(userId);
+    expect((await services.preferences.home(userId)).panels).toBeNull();
   });
 
   it("stories can be created, updated, unpublished, restored, and rolled back", async () => {
