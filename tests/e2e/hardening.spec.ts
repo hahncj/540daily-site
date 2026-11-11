@@ -186,6 +186,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         const response = await page.goto(path);
         expect(response?.status(), path).toBe(404);
         await expect(page.getByRole("heading", { level: 1, name: "Not found" })).toBeVisible();
+        await expect(page).toHaveTitle("Not found · 540 Daily");
         await expectAccessible(page);
       }
       const home = page.getByRole("link", { name: "Go to the homepage" });

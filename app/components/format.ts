@@ -12,7 +12,7 @@ const timeFormat = new Intl.DateTimeFormat("en-US", { timeZone: SITE_TIME_ZONE, 
  * 9:00 AM" in WebKit, sometimes with narrow no-break spaces). Server and browser must render the same
  * text or React's hydration fails, so the pieces are joined here with plain spaces.
  */
-export const plainSpaces = (text: string) => text.replace(/\s+/g, " ");
+const plainSpaces = (text: string) => text.replace(/\s+/g, " ");
 
 /** "Nov 6, 2026" in Central Time. */
 export function formatDate(value: Date | string): string {

@@ -248,9 +248,12 @@ describe("credentials and members on D1", () => {
     // Other test owners exist in this shared database, so disable them first to reach the sole-owner case.
     const owners = (await services.members.listMembers(owner))!.filter((m) => m.role === "owner" && m.status === "active" && m.userId !== owner.userId);
     for (const o of owners) await db.update(schema.memberships).set({ status: "disabled" }).where(eq(schema.memberships.userId, o.userId));
-    expect(await services.members.changeRole(owner, owner.userId, "editor")).toMatchObject({ ok: false, status: "conflict" });
-    expect((await services.members.listMembers(owner))!.find((m) => m.userId === owner.userId)).toMatchObject({ role: "owner", status: "active" });
-    for (const o of owners) await db.update(schema.memberships).set({ status: "active" }).where(eq(schema.memberships.userId, o.userId));
+    try {
+      expect(await services.members.changeRole(owner, owner.userId, "editor")).toMatchObject({ ok: false, status: "conflict" });
+      expect((await services.members.listMembers(owner))!.find((m) => m.userId === owner.userId)).toMatchObject({ role: "owner", status: "active" });
+    } finally {
+      for (const o of owners) await db.update(schema.memberships).set({ status: "active" }).where(eq(schema.memberships.userId, o.userId));
+    }
   });
 });
 
