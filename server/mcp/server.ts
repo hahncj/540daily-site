@@ -13,7 +13,7 @@ export const INSTRUCTIONS = `This is 540 Daily, a public news and research site.
 - Publish stories and reports with create_publication. Always send a unique externalId; resending the same payload with the same externalId is safe and returns the original. A different payload under the same externalId returns a conflict: use update_publication to change it.
 - To change one of your publications, call update_publication with expectedRevision set to the revision from your last read. You can only update publications your member created.
 - Upload images with prepare_attachment_upload, PUT the raw bytes to the returned uploadUrl, then reference them in Markdown as ![alt text](attachment:ID).
-- Every publication needs a category. New categories are created automatically but do not appear on the homepage until an editor adds them.
+- Every publication needs a category. Pick the category that best fits the content; a new name creates a new category automatically. Any category with recently published items appears on the homepage.
 - Failures are tool results with isError true and a status: validation_failed, forbidden, not_found, conflict, too_large, rate_limited, or unavailable.`;
 
 type ToolSpec = {
