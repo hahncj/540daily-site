@@ -1,8 +1,10 @@
-// The 540 Daily MCP server: six tools over the same operations as the HTTP API.
-// A new McpServer is built per request for the authenticated member (stateless).
+// The 540 Daily MCP server: tools over the same operations as the HTTP API, plus the owner's
+// daily_story prompt. A new McpServer is built per request for the authenticated member (stateless),
+// so owner-only tools and prompts are listed only to the owner's agents.
 import { createMcpHandler, fromJsonSchema, McpServer, type JsonSchemaType, type StandardSchemaWithJSON } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { AgentPrincipal } from "../agent-auth";
+import { canReadPrompt } from "../core/prompts";
 import type { Services } from "../app";
 import { MAX_JSON_BODY_BYTES, OPERATION_INPUT_SHAPES, runOperation, type OperationName, type OperationResult } from "../integration";
 
@@ -16,12 +18,21 @@ export const INSTRUCTIONS = `This is 540 Daily, a public news and research site.
 - Every publication needs a category. Pick the category that best fits the content; a new name creates a new category automatically. Any category with recently published items appears on the homepage.
 - Failures are tool results with isError true and a status: validation_failed, forbidden, not_found, conflict, too_large, rate_limited, or unavailable.`;
 
+/** Added for the owner's agents, who can read the daily story prompt. */
+export const OWNER_INSTRUCTIONS = `- For a daily story run, call get_daily_story_prompt first and follow the prompt it returns. The daily_story prompt holds the same text.`;
+
+export function instructionsFor(principal: AgentPrincipal): string {
+  return canReadPrompt(principal) ? `${INSTRUCTIONS}\n${OWNER_INSTRUCTIONS}` : INSTRUCTIONS;
+}
+
 type ToolSpec = {
   op: OperationName;
   title: string;
   description: string;
   readOnly: boolean;
   idempotent: boolean;
+  /** Listed only to agents this returns true for. */
+  visibleTo?: (principal: AgentPrincipal) => boolean;
 };
 
 const TOOLS: ToolSpec[] = [
@@ -70,7 +81,18 @@ const TOOLS: ToolSpec[] = [
     readOnly: false,
     idempotent: false,
   },
+  {
+    op: "get_daily_story_prompt",
+    title: "Read the daily story prompt",
+    description:
+      "Read the owner's current daily story prompt: the instructions for researching, writing, and publishing a daily edition. Call it at the start of each daily run and follow it. Owner's agents only.",
+    readOnly: true,
+    idempotent: true,
+    visibleTo: canReadPrompt,
+  },
 ];
+
+const FOCUS_MAX_LENGTH = 500;
 
 /**
  * The tool's advertised JSON Schema comes from the shared zod shape, but the SDK does not validate it:
@@ -93,8 +115,9 @@ function toolResult(result: OperationResult) {
 }
 
 export function createAppMcpServer(services: Services, principal: AgentPrincipal): McpServer {
-  const server = new McpServer({ name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION }, { instructions: INSTRUCTIONS });
+  const server = new McpServer({ name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION }, { instructions: instructionsFor(principal) });
   for (const tool of TOOLS) {
+    if (tool.visibleTo && !tool.visibleTo(principal)) continue;
     server.registerTool(
       tool.op,
       {
@@ -107,7 +130,33 @@ export function createAppMcpServer(services: Services, principal: AgentPrincipal
         toolResult(await runOperation(services, principal, tool.op, args, { interface: "mcp", operationId: services.newId() })),
     );
   }
+  if (canReadPrompt(principal)) registerDailyStoryPrompt(server, services, principal);
   return server;
+}
+
+/**
+ * `daily_story`: the saved prompt as one user message, so the member's own AI client runs the edition
+ * with these tools. The server never calls a model itself.
+ */
+function registerDailyStoryPrompt(server: McpServer, services: Services, principal: AgentPrincipal) {
+  server.registerPrompt(
+    "daily_story",
+    {
+      title: "Run the daily story edition",
+      description: "Research, write, and publish today's 540 Daily stories and briefing, following the owner's saved daily story prompt.",
+      argsSchema: z.object({
+        focus: z.string().max(FOCUS_MAX_LENGTH).optional().describe("Optional note for this run only, such as \"sports only today\"."),
+      }),
+    },
+    async ({ focus }) => {
+      const result = await runOperation(services, principal, "get_daily_story_prompt", {}, { interface: "mcp", operationId: services.newId() });
+      const prompt = result.body.prompt as { text: string } | undefined;
+      if (result.isError || !prompt) throw new Error(result.body.message);
+      const note = focus?.trim();
+      const text = note ? `${prompt.text}\n\n## Focus for this run\n\n${note}` : prompt.text;
+      return { description: "540 Daily daily story prompt", messages: [{ role: "user" as const, content: { type: "text" as const, text } }] };
+    },
+  );
 }
 
 export function createMcpRequestHandler(services: Services, principal: AgentPrincipal) {

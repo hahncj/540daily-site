@@ -9,6 +9,7 @@ import { canUpdatePublication } from "./core/actors";
 import { prepareUploadSchema, type AttachmentInfo } from "./core/attachments";
 import type { Category } from "./core/categories";
 import { ATTACHMENT_SCHEME } from "./core/markdown";
+import { PROMPT_TITLES, type PromptRevision } from "./core/prompts";
 import {
   agentCreateShape,
   attribution,
@@ -40,6 +41,7 @@ export const OPERATION_INPUT_SHAPES = {
   update_publication: { id: publicationId, ...publicationUpdateShape },
   prepare_attachment_upload: prepareUploadSchema.shape,
   get_attachment: { id: z.string().min(1).max(100).describe("Attachment ID from prepare_attachment_upload.") },
+  get_daily_story_prompt: {},
 } as const;
 
 export type OperationName = keyof typeof OPERATION_INPUT_SHAPES;
@@ -148,6 +150,10 @@ function markdownAlt(alt: string) {
   return alt.replace(/[\\[\]]/g, (c) => `\\${c}`).replace(/\s+/g, " ");
 }
 
+export function promptJson(p: PromptRevision) {
+  return { key: p.key, title: PROMPT_TITLES[p.key], revision: p.revision, updatedAt: p.createdAt.toISOString(), text: p.body };
+}
+
 export function uploadUrl(baseUrl: string, token: string) {
   return `${baseUrl}${UPLOAD_PATH_PREFIX}${encodeURIComponent(token)}`;
 }
@@ -235,6 +241,11 @@ async function execute(services: Services, agent: AgentPrincipal, op: OperationN
       const out = await services.attachments.status(agent, typeof id === "string" ? id : "");
       if (!out.ok) return failureResult(out);
       return success(200, "ok", `Attachment is ${out.value.status}.`, { attachment: attachmentJson(out.value) });
+    }
+    case "get_daily_story_prompt": {
+      const out = await services.prompts.get(agent, "daily_story");
+      if (!out.ok) return failureResult(out);
+      return success(200, "ok", `Daily story prompt, revision ${out.value.revision}. Follow it for this run.`, { prompt: promptJson(out.value) });
     }
   }
 }

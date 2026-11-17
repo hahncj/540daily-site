@@ -7,6 +7,7 @@ import { createAuditRepository, createPublishingFailuresRepository } from "./ada
 import { createCategoriesRepository, createTagsRepository } from "./adapters/categories-repo";
 import { createMarkdownRenderer } from "./adapters/markdown";
 import { createMembersRepository } from "./adapters/members-repo";
+import { createPromptsRepository } from "./adapters/prompts-repo";
 import { createPublicationsRepository } from "./adapters/publications-repo";
 import { createBookmarksRepository, createPreferencesRepository } from "./adapters/reader-repo";
 import { createSearchRepository } from "./adapters/search-repo";
@@ -22,6 +23,7 @@ import { createCategories, createHomepage, createTags, type Categories, type Hom
 import type { MarkdownRenderer } from "./core/markdown";
 import { createMembers, type Members } from "./core/members";
 import { createPreferences, type Preferences } from "./core/preferences";
+import { createPrompts, type Prompts } from "./core/prompts";
 import { createPublications, type Publications } from "./core/publications";
 import { createPublishingFailures, type PublishingFailures } from "./core/publishing-failures";
 import { createSearch, type Search } from "./core/search";
@@ -62,6 +64,8 @@ export interface Services {
   // Lane 3B: reader features
   preferences: Preferences;
   bookmarks: Bookmarks;
+  // Agent prompts (daily story prompt)
+  prompts: Prompts;
 }
 
 export interface HostDeps {
@@ -130,6 +134,7 @@ export function createServices(deps: HostDeps): Services {
       now,
     }),
     bookmarks: createBookmarks({ repo: createBookmarksRepository(deps.db), now }),
+    prompts: createPrompts({ repo: createPromptsRepository(deps.db), audit, now }),
   };
 }
 

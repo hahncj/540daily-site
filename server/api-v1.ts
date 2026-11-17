@@ -9,6 +9,7 @@
 //   POST  /api/v1/attachment-uploads        prepare_attachment_upload
 //   GET   /api/v1/attachments/:id           upload status (uploader only)
 //   PUT   /api/v1/uploads/:token            upload the bytes (the ticket is the credential)
+//   GET   /api/v1/prompts/daily-story       get_daily_story_prompt (owner's agents only)
 import { authenticateAgent } from "./agent-auth";
 import type { Services } from "./app";
 import { errorResult, MAX_JSON_BODY_BYTES, logOperation, rateLimitedResult, runOperation, type OperationName, type OperationResult } from "./integration";
@@ -38,6 +39,7 @@ function route(method: string, path: string): Route {
   if (resource === "publications") return allow({ GET: "get_publication", PATCH: "update_publication" });
   if (resource === "attachment-uploads" && id === undefined) return allow({ POST: "prepare_attachment_upload" });
   if (resource === "attachments" && id !== undefined) return allow({ GET: "get_attachment" });
+  if (resource === "prompts" && id === "daily-story") return allow({ GET: "get_daily_story_prompt" });
   return null;
 }
 
@@ -94,6 +96,8 @@ export async function handleApiV1(request: Request, services: Services): Promise
     if (matched.id !== undefined) input = { ...(input as Record<string, unknown>), id: matched.id };
   } else if (matched.op === "search_publications") {
     input = searchInputFrom(url.searchParams);
+  } else if (matched.op === "get_daily_story_prompt") {
+    input = {};
   } else {
     input = matched.id !== undefined ? { id: matched.id } : {};
   }

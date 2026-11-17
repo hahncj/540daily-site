@@ -401,3 +401,24 @@ export const rateLimitCounters = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.bucket, t.windowStart] })],
 );
+
+// ---------------------------------------------------------------------------
+// Agent prompts (owner-managed instructions agents read over MCP and HTTP)
+// ---------------------------------------------------------------------------
+
+/**
+ * Every saved version of an agent prompt; the highest revision per key is the current one. Rows are
+ * never changed. The (key, revision) primary key makes concurrent saves of the same revision fail.
+ */
+export const agentPromptRevisions = sqliteTable(
+  "agent_prompt_revisions",
+  {
+    key: text("key").notNull(),
+    revision: integer("revision").notNull(),
+    body: text("body").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at").notNull(),
+    createdByUserId: text("created_by_user_id").references(() => user.id),
+  },
+  (t) => [primaryKey({ columns: [t.key, t.revision] })],
+);

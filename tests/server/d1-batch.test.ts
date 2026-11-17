@@ -339,3 +339,18 @@ describe("reader data on D1", () => {
     expect([...filtered.values()].flat().length).toBeGreaterThan(0);
   }, 120_000);
 });
+
+describe("agent prompts on D1", () => {
+  it("guarded saves, stale saves, and restore", async () => {
+    const owner = await memberActor(services, "d1-prompt-owner@example.test", "owner");
+    const first = await services.prompts.update(owner, "daily_story", { body: "D1 test prompt v1 (test data).", expectedRevision: 0 });
+    expect(first).toMatchObject({ ok: true, value: { revision: 1 } });
+    // The repository's guarded insert writes nothing when the expected revision is stale.
+    const stale = await services.prompts.update(owner, "daily_story", { body: "D1 test prompt stale (test data).", expectedRevision: 0 });
+    expect(stale).toMatchObject({ ok: false, status: "conflict", currentRevision: 1 });
+    expect(await services.prompts.update(owner, "daily_story", { body: "D1 test prompt v2 (test data).", expectedRevision: 1 })).toMatchObject({ ok: true, value: { revision: 2 } });
+    expect(await services.prompts.restore(owner, "daily_story", { revision: 1, expectedRevision: 2 })).toMatchObject({ ok: true, value: { revision: 3, body: "D1 test prompt v1 (test data)." } });
+    const history = await services.prompts.history(owner, "daily_story");
+    expect(history.ok && history.value.map((r) => r.revision)).toEqual([3, 2, 1]);
+  });
+});

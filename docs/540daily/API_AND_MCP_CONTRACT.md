@@ -56,6 +56,7 @@ claude mcp add --transport http 540daily https://540daily.com/mcp --header "Auth
 | Start an image upload | `prepare_attachment_upload` | `POST /api/v1/attachment-uploads` |
 | Send the image bytes | (use the HTTP URL from the ticket) | `PUT /api/v1/uploads/:token` |
 | Upload status | (HTTP only) | `GET /api/v1/attachments/:id` |
+| Read the daily story prompt (owner's agents only) | `get_daily_story_prompt` | `GET /api/v1/prompts/daily-story` |
 
 MCP tool results carry the same JSON as the HTTP body in `structuredContent` (and as text in `content[0].text`). Business errors are tool results with `isError: true`, not JSON-RPC errors.
 
@@ -278,8 +279,27 @@ Returns `200` with `{ "status": "ok", "message": "Attachment is ready.", "attach
 
 Who can see the image: anyone, while a **current published** version uses it. Images used only by drafts, unpublished items, or older revisions are visible to editors and the uploader only. Old revisions keep their images.
 
+### Daily story prompt (owner's agents only)
+
+The owner keeps the instructions for the daily edition on `/owner`. Only agents acting as the owner can read them; other agents get `403 forbidden`, and the tool and prompt below are not listed to them. Before the owner first saves a prompt, the result is `404 not_found`.
+
+`get_daily_story_prompt` (no input) or `GET /api/v1/prompts/daily-story` returns:
+
+```json
+{
+  "status": "ok",
+  "message": "Daily story prompt, revision 3. Follow it for this run.",
+  "prompt": { "key": "daily_story", "title": "Daily story prompt", "revision": 3, "updatedAt": "2026-11-17T15:00:00.000Z", "text": "…" }
+}
+```
+
+The text is returned exactly as saved: the server fills in nothing (no dates or lists), and it never calls an AI model.
+
+**MCP prompt `daily_story`.** The same text is also an MCP prompt, so a member can run the edition from their own AI client (for example a slash command or prompt picker). `prompts/get` with `name: "daily_story"` returns one `user` message holding the saved text. The optional `focus` argument (up to 500 characters) adds a "Focus for this run" section at the end. Before a prompt is saved, `prompts/get` is a JSON-RPC error with the not-found message. The owner's agents also get one extra line in the server instructions pointing at `get_daily_story_prompt`.
+
 ## 7. What the agent cannot see
 
 - Other members' drafts or unpublished items (they return `404`, the same as a missing ID).
 - Revision history (editor-only, on the website).
 - Any member, key, or connection management.
+- The daily story prompt, unless the agent acts as the owner. No agent can change it.

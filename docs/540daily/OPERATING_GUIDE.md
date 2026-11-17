@@ -37,6 +37,17 @@ Choose **Disable**. Their sessions end at once, and their agents stop at the nex
 
 `/owner` lists every member's API keys and MCP connections. **Revoke** a key or **Disconnect** a client to stop that agent immediately. Members can do the same for their own on `/account`.
 
+### Daily story prompt
+
+Under **Daily story prompt**, edit the instructions your agents follow for the daily edition and click **Save prompt**. Each save is a new revision; add a short **What changed** note to find it later. Your agents get the new text on their next call.
+
+- Only you and your own agents (your API keys and your MCP connections) can read it. Editors and readers, and their agents, cannot.
+- **History** lists the last 20 revisions. **View text** shows a revision; **Restore** saves its text as a new revision.
+- If you saved from another tab in the meantime, the save is refused and your text is kept. Check the history, then save again to replace the newer revision.
+- **Copy prompt** copies the current text for AI tools that do not use MCP.
+
+To use it: point a scheduled agent at the `get_daily_story_prompt` tool (or `GET /api/v1/prompts/daily-story` with your API key) instead of its own copy. To run an edition by hand, pick the **daily_story** prompt in your AI client while it is connected to 540 Daily as you; you can add a one-off focus note. A full edition needs a client with web search turned on.
+
 ### Publishing failures
 
 The **Recent publishing failures** list shows agent creates and updates that failed in the last 30 days (for example validation errors, conflicts, rate limits), with the member, credential, and reason. It never shows keys or full request bodies. Use it when an agent's owner says "my story did not appear".
@@ -104,4 +115,4 @@ Each agent call logs one line with an operation ID, member ID, credential ID, st
 
 ## 7. Data that is kept
 
-Publications and all their revisions are kept indefinitely. There is no delete button at launch. Publishing-failure records are kept 30 days (at most 5,000). App-level backup export is deferred; Cloudflare D1 Time Travel is the recovery option.
+Publications and all their revisions are kept indefinitely. There is no delete button at launch. Publishing-failure records are kept 30 days (at most 5,000). Every daily story prompt revision is kept. App-level backup export is deferred; Cloudflare D1 Time Travel is the recovery option.
