@@ -36,6 +36,7 @@ describe("migrations on a fresh database (A15, partial)", () => {
       "audit_events",
       "publishing_failures",
       "rate_limit_counters",
+      "agent_prompt_revisions",
       "publications_fts",
     ]) {
       expect(tables, name).toContain(name);

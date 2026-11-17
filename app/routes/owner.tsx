@@ -1,13 +1,18 @@
 // /owner: the owner console. Invitations, roles, account status, every member's MCP connections and
-// API keys, recent publishing failures, and the explicit cleanup of old unreferenced uploads.
+// API keys, the daily story prompt for agents, recent publishing failures, and the explicit cleanup
+// of old unreferenced uploads.
 // Every loader and action requires an active owner on the server; core services check again.
 import { Form, data, useNavigation } from "react-router";
 import { ROLES, type Role } from "../../server/core/access";
+import type { MemberActor } from "../../server/core/actors";
+import { MAX_PROMPT_LENGTH } from "../../server/core/prompts";
 import { HTTP_STATUS, type FailureStatus } from "../../server/core/result";
 import { requireRolePage, requireRoleWrite } from "../access.server";
+import { isPromptResult, PromptEditor, type PromptActionResult } from "../components/account/prompt-editor";
 import { accountLinks, ActionMessage, ConnectionList, CopyField, field, KeyList, NOINDEX_META, Time, type ActionResult } from "../components/account/shared";
 import { servicesContext } from "../context";
 import type { Route } from "./+types/owner";
+import type { ShouldRevalidateFunctionArgs } from "react-router";
 
 export const links = accountLinks;
 
@@ -25,18 +30,27 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const services = context.get(servicesContext);
   const viewer = await requireRolePage(request, services, "owner");
   notFoundUnlessRoot(params);
-  const [members, invitations, connections, keys, failures] = await Promise.all([
+  const actor: MemberActor = { kind: "member", userId: viewer.userId, role: viewer.role };
+  const [members, invitations, connections, keys, failures, promptHistory] = await Promise.all([
     services.members.listMembers(viewer),
     services.members.listInvitations(viewer),
     services.agents.listAllConnections(viewer),
     services.apiKeys.listAll(viewer),
     services.publishingFailures.listRecent(viewer, 50),
+    services.prompts.history(actor, "daily_story"),
   ]);
-  if (!members || !invitations || !connections || !keys || !failures) throw new Response("You don't have access to this page.", { status: 403 });
+  if (!members || !invitations || !connections || !keys || !failures || !promptHistory.ok) throw new Response("You don't have access to this page.", { status: 403 });
 
   const emailOf = new Map(members.map((m) => [m.userId, m.email]));
   const keyLabel = new Map(keys.map((k) => [k.id, k.label]));
   const clientName = new Map(connections.map((c) => [c.clientId, c.clientName]));
+  const prompts = promptHistory.value.map((r) => ({
+    revision: r.revision,
+    body: r.body,
+    note: r.note,
+    createdAt: r.createdAt,
+    author: (r.createdByUserId && emailOf.get(r.createdByUserId)) || "Removed member",
+  }));
   return {
     viewerId: viewer.userId,
     signInLink: `${services.config.baseUrl}/sign-in`,
@@ -67,12 +81,23 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       message: f.message,
       externalId: f.externalId,
     })),
+    prompt: { current: prompts[0] ?? null, history: prompts, maxLength: MAX_PROMPT_LENGTH },
   };
+}
+
+/** Reload after prompt saves even when refused, so a conflict shows the newer revision while the draft is kept. */
+export function shouldRevalidate({ formData, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+  const intent = formData?.get("intent");
+  return intent === "save-prompt" || intent === "restore-prompt" ? true : defaultShouldRevalidate;
 }
 
 function refused(status: FailureStatus | number, message: string, fieldName?: string) {
   const code = typeof status === "number" ? status : HTTP_STATUS[status];
   return data<ActionResult>({ ok: false, message, ...(fieldName ? { field: fieldName } : {}) }, { status: code });
+}
+
+function promptRefused(status: FailureStatus, message: string, extra: Omit<Extract<PromptActionResult, { ok: false }>, "section" | "ok" | "message"> = {}) {
+  return data<PromptActionResult>({ section: "prompt", ok: false, message, ...extra }, { status: HTTP_STATUS[status] });
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -81,8 +106,28 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   notFoundUnlessRoot(params);
   const form = await request.formData();
   const intent = field(form, "intent");
+  const actor: MemberActor = { kind: "member", userId: viewer.userId, role: viewer.role };
 
   switch (intent) {
+    case "save-prompt": {
+      const draft = { body: String(form.get("body") ?? ""), note: field(form, "note") };
+      const result = await services.prompts.update(actor, "daily_story", { ...draft, expectedRevision: field(form, "expectedRevision") });
+      if (!result.ok) {
+        const fieldName = result.errors?.body ? "body" : result.errors?.note ? "note" : undefined;
+        const message = fieldName
+          ? result.errors![fieldName]!.join(" ")
+          : result.status === "conflict"
+            ? `Revision ${result.currentRevision} was saved while you were editing. Your text is kept below: check the history, then save again to replace it.`
+            : result.message;
+        return promptRefused(result.status, message, { draft, ...(fieldName ? { field: fieldName } : {}) });
+      }
+      return { section: "prompt", ok: true, message: `Saved as revision ${result.value.revision}. Your agents get it on their next call.` } satisfies PromptActionResult;
+    }
+    case "restore-prompt": {
+      const result = await services.prompts.restore(actor, "daily_story", { revision: field(form, "revision"), expectedRevision: field(form, "expectedRevision") });
+      if (!result.ok) return promptRefused(result.status, result.message);
+      return { section: "prompt", ok: true, message: `Restored as revision ${result.value.revision}.` } satisfies PromptActionResult;
+    }
     case "invite": {
       const result = await services.members.invite(viewer, field(form, "email"));
       if (!result.ok) return refused(result.status, result.errors?.email?.join(" ") ?? result.message, "email");
@@ -139,14 +184,16 @@ const SECTIONS = [
   ["members", "Members"],
   ["connections", "MCP connections"],
   ["keys", "API keys"],
+  ["daily-prompt", "Daily story prompt"],
   ["failures", "Publishing failures"],
   ["uploads", "Uploads"],
 ] as const;
 
 export default function Owner({ loaderData, actionData }: Route.ComponentProps) {
-  const { viewerId, signInLink, members, invitations, connections, keys, failures } = loaderData;
+  const { viewerId, signInLink, members, invitations, connections, keys, failures, prompt } = loaderData;
   const busy = useNavigation().state !== "idle";
-  const result = actionData as ActionResult | undefined;
+  const promptResult = isPromptResult(actionData) ? actionData : undefined;
+  const result = promptResult ? undefined : (actionData as ActionResult | undefined);
   const emailError = result && !result.ok && result.field === "email";
 
   return (
@@ -283,6 +330,11 @@ export default function Owner({ loaderData, actionData }: Route.ComponentProps) 
         <h2 id="keys-title">API keys</h2>
         <p className="muted">Every member's API keys. Members create their own keys on their account page; you can revoke any of them.</p>
         <KeyList keys={keys} busy={busy} showMember empty="No API keys exist." />
+      </section>
+
+      <section id="daily-prompt" aria-labelledby="daily-prompt-title" className="account-section">
+        <h2 id="daily-prompt-title">Daily story prompt</h2>
+        <PromptEditor current={prompt.current} history={prompt.history} maxLength={prompt.maxLength} busy={busy} result={promptResult} />
       </section>
 
       <section id="failures" aria-labelledby="failures-title" className="account-section">

@@ -74,6 +74,7 @@ The receipt and the publication commit together, so a failed attempt never leave
 - Idempotency: `uniqueIndex` on `(user_id, external_id)` in `submission_receipts`, so retries through any of a member's connections or keys match.
 - Revision history: a separate append-only table of JSON snapshots (`publication_revisions`: publication ID, revision number, snapshot, status, actor kind and ID, created at). Unique on `(publication_id, revision)`.
 - Bookmarks: unique on `(user_id, publication_id)`.
+- Agent prompts: `agent_prompt_revisions` (key, revision, body, optional note, created at, created by), primary key `(key, revision)`. The highest revision is the current prompt; rows never change. A save is one guarded `insert … select … where max(revision) = expected`, so a stale or racing save writes nothing. Prompt text is never put in audit details or logs. No seed row: the owner saves the first revision on `/owner`.
 - Visibility: a `status` column (`draft`, `published`, `unpublished`) on publications. There is no hard delete at launch.
 
 ```ts

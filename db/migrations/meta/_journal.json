@@ -22,6 +22,13 @@
       "when": 1794435526261,
       "tag": "0002_home_window_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794934676836,
+      "tag": "0003_agent_prompts",
+      "breakpoints": true
     }
   ]
 }

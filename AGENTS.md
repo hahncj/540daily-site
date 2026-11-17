@@ -70,6 +70,12 @@ Dynamic home page categories notes:
 - Timeframe: `user_preferences.home_window_hours` (migration `0002`), choices in `HOME_WINDOW_HOURS`; visitors always get 24 hours. With nothing recent, the home page lists `publications.newestPublished()`.
 - Playwright seed data is published a few hours before the run so it counts as recent.
 
+Daily story prompt notes:
+
+- `services.prompts` (`server/core/prompts.ts`): `get`, `history`, `update`, `restore` for key `daily_story`. Owner members and owner agents may read; only the owner on the website may write. Prompt text can hold private details: never log it or put it in audit details, and never seed it in a migration.
+- Agents read it with the MCP tool `get_daily_story_prompt`, `GET /api/v1/prompts/daily-story`, or the MCP prompt `daily_story` (`prompts/get`, optional `focus`). Tools and prompts with `visibleTo` in `server/mcp/server.ts` are listed only to agents that pass it; `instructionsFor(principal)` adds owner-only instructions.
+- The owner screen is the `#daily-prompt` section of `/owner`. That route's `shouldRevalidate` reloads after prompt actions even when refused, so a conflict shows the newer revision and keeps the draft.
+
 ## Document authority (read before building)
 
 1. [docs/540daily/BUILD_PROMPT.md](docs/540daily/BUILD_PROMPT.md): entry point and build workflow. [docs/540daily/BUILD_PLAN.md](docs/540daily/BUILD_PLAN.md) splits the build into stages and parallel lanes; stay inside your lane's folders.
